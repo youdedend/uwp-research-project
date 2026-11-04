@@ -71,10 +71,11 @@ Notes / approximate performance observations (steady-state FPS and shader-compil
 (paste text log lines only—not game files)
 ```
 
-## Patch 0001 no-behaviour-change rebuild (after G1 passes)
+## Patches 0001-0002 no-behaviour-change rebuild (after G1 passes)
 
 - [ ] Applied `patches/0001-aurora-store-detection.patch`
+- [ ] Applied `patches/0002-aurora-uwp-dep-providers.patch`
 - [ ] Desktop rebuild exited `0`
 - [ ] PC launch/title smoke test still passes
 - Desktop rebuild elapsed time:
-- Any new warnings/errors attributable to patch `0001`:
+- Any new warnings/errors attributable to patches `0001`-`0002`:

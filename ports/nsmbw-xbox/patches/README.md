@@ -7,12 +7,15 @@ Patches live here as small, numbered, anchored diffs against the exact commits i
 | Patch | Target | Status |
 |---|---|---|
 | [`0001-aurora-store-detection.patch`](0001-aurora-store-detection.patch) | NSMBW `v0.3.1` `aurora-main/CMakeLists.txt`, `aurora-main/cmake/aurora_core.cmake` (+18/−1) | Written 2026-11-04. `git apply --check` + apply verified on a clean pinned clone (tree restored after). CMake detection/defaults only. **PC build gate still pending** — not yet configured/built anywhere |
+| [`0002-aurora-uwp-dep-providers.patch`](0002-aurora-uwp-dep-providers.patch) | NSMBW `v0.3.1` Aurora provider layer: new `cmake/AuroraUwpDep.cmake`, Dawn/SDL/nod provider branches, provider enum/defaults, one Store-only include from `extern/CMakeLists.txt` (+287/−10) | Written after `0001`. Series apply (`0001` then `0002`) and `git diff --check` verified on a clean pinned clone. CMake module/provider logic was exercised in synthetic local harnesses: missing SDL root fails closed; layout fixtures select `uwp_dep` and create `dawn::webgpu_dawn`, `SDL3::SDL3`, `nod::nod`, and `aurora::uwp_dep`. **No real UWP compile/link or PC rebuild gate has run yet**. SDL must come from the separate true-UWP checkout; the main bundle's desktop SDL is explicitly rejected by design |
 
-Apply from this repository’s root (patch paths are relative to the NSMBW repo root — no `--directory`; the `..\..\patches` argument is resolved from inside the `-C` clone directory):
+Apply from this repository’s root, in series order (patch paths are relative to the NSMBW repo root — no `--directory`; the `..\..\patches` argument is resolved from inside the `-C` clone directory):
 
 ```powershell
 git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply --check ..\..\patches\0001-aurora-store-detection.patch
 git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply ..\..\patches\0001-aurora-store-detection.patch
+git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply --check ..\..\patches\0002-aurora-uwp-dep-providers.patch
+git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply ..\..\patches\0002-aurora-uwp-dep-providers.patch
 ```
 
 ## Series plan

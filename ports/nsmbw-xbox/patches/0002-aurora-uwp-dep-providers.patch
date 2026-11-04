@@ -1,0 +1,378 @@
+diff --git a/aurora-main/CMakeLists.txt b/aurora-main/CMakeLists.txt
+index 4536f10..41f97be 100644
+--- a/aurora-main/CMakeLists.txt
++++ b/aurora-main/CMakeLists.txt
+@@ -34,7 +34,12 @@ set(AURORA_NOD_VERSION "v2.0.0-alpha.8" CACHE STRING "nod version tag (https://g
+ set(AURORA_LIBUSB_VERSION "1.0.30" CACHE STRING "libusb version tag (https://github.com/libusb/libusb/releases)")
+ 
+ # Platform-specific defaults
+-if (CMAKE_CROSSCOMPILING)
++if (AURORA_WINDOWS_STORE)
++  # Store lane: providers auto-resolve only to the pinned local uwp_dep
++  # bundles (see cmake/AuroraUwpDep.cmake); desktop packages are not a fallback.
++  set(_default_provider "auto")
++  set(_default_linkage "shared")
++elseif (CMAKE_CROSSCOMPILING)
+   # Cross-compiling: vendor everything, don't use system packages
+   set(_default_provider "vendor")
+   set(_default_linkage "static")
+@@ -49,23 +54,23 @@ endif ()
+ 
+ # Dawn/WebGPU (if AURORA_ENABLE_GX)
+ set(AURORA_DAWN_PROVIDER "${_default_provider}" CACHE STRING
+-  "How to provide Dawn: auto, vendor (build from source), system (find_package/imported), package (download prebuilt)")
+-set_property(CACHE AURORA_DAWN_PROVIDER PROPERTY STRINGS auto vendor system package)
++  "How to provide Dawn: auto, vendor (build from source), system (find_package/imported), package (download prebuilt), or uwp_dep (Windows Store only)")
++set_property(CACHE AURORA_DAWN_PROVIDER PROPERTY STRINGS auto vendor system package uwp_dep)
+ set(AURORA_DAWN_LINKAGE "${_default_linkage}" CACHE STRING "Dawn linkage type preference")
+ set_property(CACHE AURORA_DAWN_LINKAGE PROPERTY STRINGS shared static)
+ 
+ # SDL3
+ set(AURORA_SDL3_PROVIDER "${_default_provider}" CACHE STRING
+-  "How to provide SDL3: auto, vendor (build from source), system (find_package/imported), or package (download prebuilt)")
+-set_property(CACHE AURORA_SDL3_PROVIDER PROPERTY STRINGS auto vendor system package)
++  "How to provide SDL3: auto, vendor (build from source), system (find_package/imported), package (download prebuilt), or uwp_dep (Windows Store only)")
++set_property(CACHE AURORA_SDL3_PROVIDER PROPERTY STRINGS auto vendor system package uwp_dep)
+ set(AURORA_SDL3_LINKAGE "${_default_linkage}" CACHE STRING "SDL3 linkage type preference")
+ set_property(CACHE AURORA_SDL3_LINKAGE PROPERTY STRINGS shared static)
+ option(AURORA_SDL3_LIBUSB "Build the vendored SDL3 with libusb on Windows (official GameCube adapter support)" ON)
+ 
+ # nod (if AURORA_ENABLE_DVD)
+ set(AURORA_NOD_PROVIDER "${_default_provider}" CACHE STRING
+-  "How to provide nod: auto, vendor (build from source), system (find_package/imported), package (download prebuilt)")
+-set_property(CACHE AURORA_NOD_PROVIDER PROPERTY STRINGS auto vendor system package)
++  "How to provide nod: auto, vendor (build from source), system (find_package/imported), package (download prebuilt), or uwp_dep (Windows Store only)")
++set_property(CACHE AURORA_NOD_PROVIDER PROPERTY STRINGS auto vendor system package uwp_dep)
+ set(AURORA_NOD_LINKAGE "${_default_linkage}" CACHE STRING "nod linkage type preference")
+ set_property(CACHE AURORA_NOD_LINKAGE PROPERTY STRINGS shared static)
+ 
+diff --git a/aurora-main/cmake/AuroraDawnProvider.cmake b/aurora-main/cmake/AuroraDawnProvider.cmake
+index fcdc365..ced7090 100644
+--- a/aurora-main/cmake/AuroraDawnProvider.cmake
++++ b/aurora-main/cmake/AuroraDawnProvider.cmake
+@@ -262,9 +262,46 @@ elseif (_aurora_dawn_provider STREQUAL "package")
+     set(AURORA_DAWN_IS_SHARED FALSE PARENT_SCOPE)
+   endif ()
+ 
++elseif (_aurora_dawn_provider STREQUAL "uwp_dep")
++  # ── UWP dep: pinned local prebuilt Dawn/WebGPU for Windows Store ──
++  if (NOT AURORA_WINDOWS_STORE)
++    message(FATAL_ERROR "aurora: AURORA_DAWN_PROVIDER=uwp_dep is only valid in the Windows Store lane.")
++  endif ()
++  if (NOT DEFINED AURORA_UWP_DEP_ROOT OR NOT EXISTS "${AURORA_UWP_DEP_ROOT}/x64/lib/webgpu_dawn.lib")
++    message(FATAL_ERROR
++      "aurora: AURORA_DAWN_PROVIDER=uwp_dep requires the main pinned uwp-dep "
++      "checkout with x64/lib/webgpu_dawn.lib; see cmake/AuroraUwpDep.cmake.")
++  endif ()
++
++  message(STATUS "aurora: Using Dawn/WebGPU from pinned uwp-dep (${AURORA_UWP_DEP_ROOT})")
++  set(_aurora_uwp_x64 "${AURORA_UWP_DEP_ROOT}/x64")
++  if (NOT TARGET dawn_webgpu_uwp_dep)
++    add_library(dawn_webgpu_uwp_dep SHARED IMPORTED GLOBAL)
++    set_target_properties(dawn_webgpu_uwp_dep PROPERTIES
++      IMPORTED_LOCATION "${_aurora_uwp_x64}/bin/webgpu_dawn.dll"
++      IMPORTED_IMPLIB "${_aurora_uwp_x64}/lib/webgpu_dawn.lib"
++      INTERFACE_INCLUDE_DIRECTORIES "${_aurora_uwp_x64}/include"
++    )
++  endif ()
++  if (NOT TARGET dawn::webgpu_dawn)
++    add_library(dawn::webgpu_dawn ALIAS dawn_webgpu_uwp_dep)
++  endif ()
++  unset(_aurora_uwp_x64)
++
++  # The bundled UWP Dawn is the D3D12/D3D11 path. Vulkan defines stay out of
++  # the Store compile set for this port.
++  set(DAWN_ENABLE_D3D12 ON CACHE INTERNAL "")
++  set(DAWN_ENABLE_D3D11 ON CACHE INTERNAL "")
++  set(DAWN_ENABLE_VULKAN OFF CACHE INTERNAL "")
++  set(DAWN_ENABLE_METAL OFF CACHE INTERNAL "")
++  set(DAWN_ENABLE_DESKTOP_GL OFF CACHE INTERNAL "")
++  set(DAWN_ENABLE_OPENGLES OFF CACHE INTERNAL "")
++  set(DAWN_ENABLE_NULL ON CACHE INTERNAL "")
++  set(AURORA_DAWN_IS_SHARED TRUE PARENT_SCOPE)
++
+ else ()
+   message(FATAL_ERROR "Invalid AURORA_DAWN_PROVIDER: ${AURORA_DAWN_PROVIDER} "
+-    "(must be auto, vendor, system, or package)")
++    "(must be auto, vendor, system, package, or uwp_dep)")
+ endif ()
+ 
+ # Ensure dawn::dawncpp_headers target exists (needed by tests).
+diff --git a/aurora-main/cmake/AuroraNodProvider.cmake b/aurora-main/cmake/AuroraNodProvider.cmake
+index b112d9d..b40b7a7 100644
+--- a/aurora-main/cmake/AuroraNodProvider.cmake
++++ b/aurora-main/cmake/AuroraNodProvider.cmake
+@@ -144,7 +144,33 @@ elseif (_aurora_nod_provider STREQUAL "package")
+     message(FATAL_ERROR "Prebuilt nod package did not provide nod::nod target")
+   endif ()
+ 
++elseif (_aurora_nod_provider STREQUAL "uwp_dep")
++  # ── UWP dep: pinned local prebuilt nod for Windows Store ──
++  if (NOT AURORA_WINDOWS_STORE)
++    message(FATAL_ERROR "aurora: AURORA_NOD_PROVIDER=uwp_dep is only valid in the Windows Store lane.")
++  endif ()
++  if (NOT DEFINED AURORA_UWP_DEP_ROOT OR NOT EXISTS "${AURORA_UWP_DEP_ROOT}/x64/lib/nod.lib")
++    message(FATAL_ERROR
++      "aurora: AURORA_NOD_PROVIDER=uwp_dep requires the main pinned uwp-dep "
++      "checkout with x64/lib/nod.lib; see cmake/AuroraUwpDep.cmake.")
++  endif ()
++
++  message(STATUS "aurora: Using nod from pinned uwp-dep (${AURORA_UWP_DEP_ROOT})")
++  set(_aurora_uwp_x64 "${AURORA_UWP_DEP_ROOT}/x64")
++  if (NOT TARGET nod_uwp_dep)
++    add_library(nod_uwp_dep SHARED IMPORTED GLOBAL)
++    set_target_properties(nod_uwp_dep PROPERTIES
++      IMPORTED_LOCATION "${_aurora_uwp_x64}/bin/nod.dll"
++      IMPORTED_IMPLIB "${_aurora_uwp_x64}/lib/nod.lib"
++      INTERFACE_INCLUDE_DIRECTORIES "${_aurora_uwp_x64}/include"
++    )
++  endif ()
++  if (NOT TARGET nod::nod)
++    add_library(nod::nod ALIAS nod_uwp_dep)
++  endif ()
++  unset(_aurora_uwp_x64)
++
+ else ()
+   message(FATAL_ERROR "Invalid AURORA_NOD_PROVIDER: ${AURORA_NOD_PROVIDER} "
+-    "(must be auto, vendor, system, or package)")
++    "(must be auto, vendor, system, package, or uwp_dep)")
+ endif ()
+diff --git a/aurora-main/cmake/AuroraSDL3Provider.cmake b/aurora-main/cmake/AuroraSDL3Provider.cmake
+index 70bd28c..8cdd399 100644
+--- a/aurora-main/cmake/AuroraSDL3Provider.cmake
++++ b/aurora-main/cmake/AuroraSDL3Provider.cmake
+@@ -158,7 +158,35 @@ elseif (_aurora_sdl3_provider STREQUAL "vendor")
+   endif ()
+   _aurora_sdl3_select_target()
+ 
++elseif (_aurora_sdl3_provider STREQUAL "uwp_dep")
++  # ── UWP dep: separate pinned true-UWP SDL3 checkout ──
++  if (NOT AURORA_WINDOWS_STORE)
++    message(FATAL_ERROR "aurora: AURORA_SDL3_PROVIDER=uwp_dep is only valid in the Windows Store lane.")
++  endif ()
++  if (NOT DEFINED AURORA_UWP_SDL_ROOT OR NOT EXISTS "${AURORA_UWP_SDL_ROOT}/x64/lib/SDL3.lib")
++    message(FATAL_ERROR
++      "aurora: AURORA_SDL3_PROVIDER=uwp_dep requires the separate pinned "
++      "true-UWP SDL checkout with x64/lib/SDL3.lib; see cmake/AuroraUwpDep.cmake. "
++      "Do not substitute the main bundle's desktop SDL3.dll.")
++  endif ()
++
++  message(STATUS "aurora: Using SDL3 from pinned true-UWP checkout (${AURORA_UWP_SDL_ROOT})")
++  set(_aurora_uwp_sdl_x64 "${AURORA_UWP_SDL_ROOT}/x64")
++  if (NOT TARGET SDL3_uwp_dep)
++    add_library(SDL3_uwp_dep SHARED IMPORTED GLOBAL)
++    set_target_properties(SDL3_uwp_dep PROPERTIES
++      IMPORTED_LOCATION "${_aurora_uwp_sdl_x64}/bin/SDL3.dll"
++      IMPORTED_IMPLIB "${_aurora_uwp_sdl_x64}/lib/SDL3.lib"
++      INTERFACE_INCLUDE_DIRECTORIES "${_aurora_uwp_sdl_x64}/include"
++    )
++  endif ()
++  if (NOT TARGET SDL3::SDL3)
++    add_library(SDL3::SDL3 ALIAS SDL3_uwp_dep)
++  endif ()
++  unset(_aurora_uwp_sdl_x64)
++  _aurora_sdl3_select_target()
++
+ else ()
+   message(FATAL_ERROR "Invalid AURORA_SDL3_PROVIDER: ${AURORA_SDL3_PROVIDER} "
+-    "(must be auto, vendor, system, or package)")
++    "(must be auto, vendor, system, package, or uwp_dep)")
+ endif ()
+diff --git a/aurora-main/cmake/AuroraUwpDep.cmake b/aurora-main/cmake/AuroraUwpDep.cmake
+new file mode 100644
+index 0000000..df29369
+--- /dev/null
++++ b/aurora-main/cmake/AuroraUwpDep.cmake
+@@ -0,0 +1,177 @@
++include_guard(GLOBAL)
++
++# NSMBW Xbox port: local, fail-closed access to the UWP prebuilt bundles.
++#
++# This is an adaptation of the uwp-dep provider idea from jajdp's MIT
++# retro-rewind-xbox recipe onto NSMBW's Aurora fork. Unlike the recipe, this
++# module never downloads the bundles and never falls back to a desktop Dawn,
++# SDL, or nod provider in the Windows Store lane. The two checkouts are local
++# and separate on purpose:
++#
++#   AURORA_UWP_DEP_SOURCE_DIR  XboxEmulationHub/uwp-dep @ 6ba4aad1...
++#                              Dawn/WebGPU, nod, libpng, zlib, DXC, libuwp.
++#   AURORA_UWP_SDL_SOURCE_DIR  XboxEmulationHub/uwp-dep @ ae39aa00...
++#                              SDL3 only. The main bundle's SDL3.dll is a
++#                              desktop build (non-_APP MSVC runtimes) and must
++#                              not be linked or packaged for UWP.
++
++if (NOT AURORA_WINDOWS_STORE)
++  if (AURORA_DAWN_PROVIDER STREQUAL "uwp_dep" OR
++      AURORA_SDL3_PROVIDER STREQUAL "uwp_dep" OR
++      AURORA_NOD_PROVIDER STREQUAL "uwp_dep")
++    message(FATAL_ERROR
++      "aurora: provider 'uwp_dep' is only valid for the Windows Store lane "
++      "(CMAKE_SYSTEM_NAME=WindowsStore).")
++  endif ()
++  return()
++endif ()
++
++if (NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
++  message(FATAL_ERROR "aurora: the pinned uwp-dep bundles contain Win64 binaries only.")
++endif ()
++
++set(AURORA_UWP_DEP_SOURCE_DIR "$ENV{AURORA_UWP_DEP_SOURCE_DIR}" CACHE PATH
++  "Local XboxEmulationHub/uwp-dep checkout at 6ba4aad18b0f149151784f31fd339225544e24f2")
++set(AURORA_UWP_SDL_SOURCE_DIR "$ENV{AURORA_UWP_SDL_SOURCE_DIR}" CACHE PATH
++  "Separate local XboxEmulationHub/uwp-dep SDL checkout at ae39aa004ae127bd00f8262d28b401f8e4ed8728")
++
++set(_aurora_uwp_dep_expected_commit "6ba4aad18b0f149151784f31fd339225544e24f2")
++set(_aurora_uwp_sdl_expected_commit "ae39aa004ae127bd00f8262d28b401f8e4ed8728")
++
++function(_aurora_uwp_require_file path description)
++  if (NOT EXISTS "${path}")
++    message(FATAL_ERROR
++      "aurora: Windows Store dependency check failed; missing ${description}: ${path}\n"
++      "Set AURORA_UWP_DEP_SOURCE_DIR and AURORA_UWP_SDL_SOURCE_DIR to the two "
++      "separate local checkouts described in cmake/AuroraUwpDep.cmake. "
++      "Aurora will not fall back to a desktop provider in this lane.")
++  endif ()
++endfunction()
++
++function(_aurora_uwp_check_git_pin root expected label)
++  if (NOT EXISTS "${root}/.git")
++    message(WARNING
++      "aurora: ${label} at ${root} is not a Git checkout; cannot verify that it "
++      "is commit ${expected}. Continuing with layout checks only.")
++    return()
++  endif ()
++
++  find_program(_aurora_uwp_git_executable git)
++  if (NOT _aurora_uwp_git_executable)
++    message(WARNING
++      "aurora: git was not found; cannot verify the ${label} commit at ${root}. "
++      "Continuing with layout checks only.")
++    return()
++  endif ()
++
++  execute_process(
++    COMMAND "${_aurora_uwp_git_executable}" -C "${root}" rev-parse HEAD
++    OUTPUT_VARIABLE _aurora_uwp_head
++    OUTPUT_STRIP_TRAILING_WHITESPACE
++    ERROR_QUIET
++    RESULT_VARIABLE _aurora_uwp_result
++  )
++  if (NOT _aurora_uwp_result EQUAL 0)
++    message(WARNING
++      "aurora: could not read the ${label} commit at ${root}; continuing with "
++      "layout checks only.")
++  elseif (NOT _aurora_uwp_head STREQUAL expected)
++    message(FATAL_ERROR
++      "aurora: ${label} is at commit ${_aurora_uwp_head}; expected ${expected} "
++      "(${root}). Use the exact pinned checkout for this port.")
++  endif ()
++endfunction()
++
++function(_aurora_uwp_select_provider provider_var linkage_var label)
++  set(_aurora_uwp_provider "${${provider_var}}")
++  if (_aurora_uwp_provider STREQUAL "system")
++    message(FATAL_ERROR
++      "aurora: ${label} provider 'system' is not accepted in the Windows Store "
++      "lane for this port; use 'uwp_dep' with the pinned local bundles.")
++  endif ()
++  if (NOT _aurora_uwp_provider STREQUAL "uwp_dep")
++    set(${provider_var} "uwp_dep" CACHE STRING "" FORCE)
++  endif ()
++  set(${linkage_var} "shared" CACHE STRING "" FORCE)
++endfunction()
++
++set(_aurora_uwp_need_main FALSE)
++if (AURORA_ENABLE_GX OR AURORA_ENABLE_DVD)
++  set(_aurora_uwp_need_main TRUE)
++endif ()
++
++_aurora_uwp_select_provider(AURORA_SDL3_PROVIDER AURORA_SDL3_LINKAGE "SDL3")
++if (AURORA_ENABLE_GX)
++  _aurora_uwp_select_provider(AURORA_DAWN_PROVIDER AURORA_DAWN_LINKAGE "Dawn")
++endif ()
++if (AURORA_ENABLE_DVD)
++  _aurora_uwp_select_provider(AURORA_NOD_PROVIDER AURORA_NOD_LINKAGE "nod")
++endif ()
++
++# Separate true-UWP SDL checkout. Headers, import library, and DLL all come
++# from here; do not add_subdirectory() it, because its CMakeLists describes
++# LIBUWP from that older bundle rather than the main pin below.
++if (NOT AURORA_UWP_SDL_SOURCE_DIR)
++  message(FATAL_ERROR
++    "aurora: AURORA_UWP_SDL_SOURCE_DIR is not set. Point it at a separate "
++    "XboxEmulationHub/uwp-dep checkout at ${_aurora_uwp_sdl_expected_commit} "
++    "for the true-UWP SDL3 (_APP MSVC runtimes).")
++endif ()
++get_filename_component(_aurora_uwp_sdl_root "${AURORA_UWP_SDL_SOURCE_DIR}" REALPATH)
++set(AURORA_UWP_SDL_ROOT "${_aurora_uwp_sdl_root}" CACHE INTERNAL "True-UWP SDL uwp-dep root")
++_aurora_uwp_check_git_pin("${AURORA_UWP_SDL_ROOT}" "${_aurora_uwp_sdl_expected_commit}" "true-UWP SDL bundle")
++_aurora_uwp_require_file("${AURORA_UWP_SDL_ROOT}/x64/include/SDL3/SDL.h" "true-UWP SDL header")
++_aurora_uwp_require_file("${AURORA_UWP_SDL_ROOT}/x64/lib/SDL3.lib" "true-UWP SDL import library")
++_aurora_uwp_require_file("${AURORA_UWP_SDL_ROOT}/x64/bin/SDL3.dll" "true-UWP SDL DLL")
++
++if (_aurora_uwp_need_main)
++  if (NOT AURORA_UWP_DEP_SOURCE_DIR)
++    message(FATAL_ERROR
++      "aurora: AURORA_UWP_DEP_SOURCE_DIR is not set. Point it at an "
++      "XboxEmulationHub/uwp-dep checkout at ${_aurora_uwp_dep_expected_commit} "
++      "for Dawn/nod/libuwp. Do not use that bundle's SDL3.dll.")
++  endif ()
++  get_filename_component(_aurora_uwp_dep_root "${AURORA_UWP_DEP_SOURCE_DIR}" REALPATH)
++  set(AURORA_UWP_DEP_ROOT "${_aurora_uwp_dep_root}" CACHE INTERNAL "Main uwp-dep root")
++
++  if (AURORA_UWP_DEP_ROOT STREQUAL AURORA_UWP_SDL_ROOT)
++    message(FATAL_ERROR
++      "aurora: AURORA_UWP_DEP_SOURCE_DIR and AURORA_UWP_SDL_SOURCE_DIR resolve "
++      "to the same folder (${AURORA_UWP_DEP_ROOT}). They must be separate "
++      "checkouts: main Dawn/nod/libuwp at ${_aurora_uwp_dep_expected_commit}, "
++      "SDL at ${_aurora_uwp_sdl_expected_commit}.")
++  endif ()
++
++  _aurora_uwp_check_git_pin("${AURORA_UWP_DEP_ROOT}" "${_aurora_uwp_dep_expected_commit}" "main uwp-dep bundle")
++  _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/CMakeLists.txt" "main uwp-dep CMakeLists")
++  _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/include/libuwp.h" "libuwp header")
++  _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/lib/libuwp.lib" "libuwp import library")
++  _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/bin/libuwp.dll" "libuwp DLL")
++
++  if (AURORA_ENABLE_GX)
++    _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/include/webgpu/webgpu.h" "UWP Dawn WebGPU header")
++    _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/lib/webgpu_dawn.lib" "UWP Dawn import library")
++    _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/bin/webgpu_dawn.dll" "UWP Dawn DLL")
++  endif ()
++  if (AURORA_ENABLE_DVD)
++    _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/include/nod.h" "UWP nod header")
++    _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/lib/nod.lib" "UWP nod import library")
++    _aurora_uwp_require_file("${AURORA_UWP_DEP_ROOT}/x64/bin/nod.dll" "UWP nod DLL")
++  endif ()
++
++  if (NOT TARGET LIBUWP)
++    add_subdirectory("${AURORA_UWP_DEP_ROOT}" "${CMAKE_BINARY_DIR}/_aurora_uwp_dep" EXCLUDE_FROM_ALL)
++  endif ()
++  if (NOT TARGET LIBUWP)
++    message(FATAL_ERROR "aurora: main uwp-dep bundle did not define imported target LIBUWP.")
++  endif ()
++  if (NOT TARGET aurora::uwp_dep)
++    add_library(aurora::uwp_dep ALIAS LIBUWP)
++  endif ()
++endif ()
++
++unset(_aurora_uwp_need_main)
++unset(_aurora_uwp_dep_root)
++unset(_aurora_uwp_sdl_root)
++unset(_aurora_uwp_dep_expected_commit)
++unset(_aurora_uwp_sdl_expected_commit)
+diff --git a/aurora-main/extern/CMakeLists.txt b/aurora-main/extern/CMakeLists.txt
+index 59eeab3..90ba8be 100644
+--- a/aurora-main/extern/CMakeLists.txt
++++ b/aurora-main/extern/CMakeLists.txt
+@@ -58,6 +58,10 @@ if (_AURORA_EXCLUDE_HOST_HOMEBREW)
+   message(STATUS "aurora: cross-architecture macOS build; ignoring host Homebrew prefixes")
+ endif ()
+ 
++if (AURORA_WINDOWS_STORE)
++  include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/AuroraUwpDep.cmake)
++endif ()
++
+ if (AURORA_ENABLE_GX)
+   include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/AuroraDawnProvider.cmake)
+ endif ()

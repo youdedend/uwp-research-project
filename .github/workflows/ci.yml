@@ -73,7 +73,7 @@ jobs:
           if ($failed) { exit 1 }
 
   pinned-sources:
-    name: Bootstrap pinned sources, audit, and apply patch 0001
+    name: Bootstrap pinned sources, audit, and apply patches 0001-0002
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -92,27 +92,36 @@ jobs:
             --with-baseline \
             --audit
 
-      - name: Check and apply Aurora patch 0001 to the disposable clone
+      - name: Check and apply Aurora patches 0001-0002 to the disposable clone
         run: |
           NSMBW="$RUNNER_TEMP/nsmbw-work/NSMB-Wii-Multiplayer-Recompilation"
-          PATCH="$GITHUB_WORKSPACE/ports/nsmbw-xbox/patches/0001-aurora-store-detection.patch"
-          git -C "$NSMBW" apply --check "$PATCH"
-          git -C "$NSMBW" apply "$PATCH"
+          PATCH_0001="$GITHUB_WORKSPACE/ports/nsmbw-xbox/patches/0001-aurora-store-detection.patch"
+          PATCH_0002="$GITHUB_WORKSPACE/ports/nsmbw-xbox/patches/0002-aurora-uwp-dep-providers.patch"
+          git -C "$NSMBW" apply --check "$PATCH_0001"
+          git -C "$NSMBW" apply "$PATCH_0001"
+          git -C "$NSMBW" apply --check "$PATCH_0002"
+          git -C "$NSMBW" apply "$PATCH_0002"
           git -C "$NSMBW" diff --check
           grep -R "AURORA_BUILD_TESTS" "$NSMBW/aurora-main/CMakeLists.txt"
           grep -R "AURORA_WINDOWS_STORE=1" "$NSMBW/aurora-main/cmake/aurora_core.cmake"
+          test -f "$NSMBW/aurora-main/cmake/AuroraUwpDep.cmake"
+          grep -R "AURORA_UWP_SDL_SOURCE_DIR" "$NSMBW/aurora-main/cmake/AuroraUwpDep.cmake"
+          grep -R "AURORA_UWP_DEP_SOURCE_DIR" "$NSMBW/aurora-main/cmake/AuroraUwpDep.cmake"
+          grep -R "uwp_dep" "$NSMBW/aurora-main/cmake/AuroraDawnProvider.cmake" \
+                             "$NSMBW/aurora-main/cmake/AuroraSDL3Provider.cmake" \
+                             "$NSMBW/aurora-main/cmake/AuroraNodProvider.cmake"
           git -C "$NSMBW" diff --stat
-          git -C "$NSMBW" diff > "$RUNNER_TEMP/nsmbw-work/patch-0001-applied.diff"
+          git -C "$NSMBW" diff > "$RUNNER_TEMP/nsmbw-work/patches-0001-0002-applied.diff"
 
       - name: Upload audit and patch evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pinned-source-audit-and-patch-0001
+          name: pinned-source-audit-and-patches-0001-0002
           path: |
             ${{ runner.temp }}/nsmbw-work/BOOTSTRAP-REPORT.md
             ${{ runner.temp }}/nsmbw-work/phase0-audit.md
-            ${{ runner.temp }}/nsmbw-work/patch-0001-applied.diff
+            ${{ runner.temp }}/nsmbw-work/patches-0001-0002-applied.diff
           if-no-files-found: warn
           retention-days: 14
 
