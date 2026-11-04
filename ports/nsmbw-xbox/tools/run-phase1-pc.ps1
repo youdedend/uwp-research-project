@@ -381,12 +381,14 @@ try {
         Add-Check 'Python 3' 'fail' 'neither python nor py was found on PATH'
         $preflightFailed = $true
     } else {
-        $versionCode = 'import sys; print(".".join(map(str, sys.version_info[:3])))'
+        # Use --version rather than a -c snippet: Windows PowerShell 5.1 can
+        # mangle embedded quotes when passing arguments to native programs.
         $pythonVersion = Invoke-Capture -FilePath $script:PythonExe `
-            -Arguments ($script:PythonPrefix + @('-c', $versionCode))
-        if ($pythonVersion.ExitCode -eq 0 -and $pythonVersion.Text -match '^3\.') {
-            Add-Check 'Python 3' 'pass' $pythonVersion.Text
-            $script:EnvironmentInfo.python = $pythonVersion.Text
+            -Arguments ($script:PythonPrefix + @('--version'))
+        if ($pythonVersion.ExitCode -eq 0 -and $pythonVersion.Text -match '^Python 3\.') {
+            $pythonVersionText = $pythonVersion.Text -replace '^Python ', ''
+            Add-Check 'Python 3' 'pass' $pythonVersionText
+            $script:EnvironmentInfo.python = $pythonVersionText
         } else {
             Add-Check 'Python 3' 'fail' "unexpected version/output: $($pythonVersion.Text)"
             $preflightFailed = $true

@@ -160,11 +160,41 @@ jobs:
             -SkipBootstrap -CheckOnly
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Verify CheckOnly report
+      - name: Publish and verify CheckOnly report
+        if: always()
         shell: pwsh
         run: |
           $reportPath = Join-Path $env:RUNNER_TEMP 'nsmbw-work\phase1\phase1-report.json'
+          if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
+            Write-Host "::error::Phase 1 report was not created: $reportPath"
+            throw "Phase 1 report was not created: $reportPath"
+          }
+
           $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
+          "## Phase 1 Windows CheckOnly" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "Result: ``$($report.result)``" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+          foreach ($check in @($report.checks)) {
+            $detail = [string]$check.detail
+            "- **$($check.name)**: ``$($check.status)`` $detail" |
+              Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            if ($check.status -eq 'fail') {
+              $message = "Phase 1 check failed: $($check.name) - $detail"
+              $message = $message -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+              Write-Host "::error::$message"
+            }
+          }
+
+          if ($report.error) {
+            "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "Error: ``$($report.error)``" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            $message = "Phase 1 error: $($report.error)"
+            $message = $message -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+            Write-Host "::error::$message"
+          }
+
           if ($report.result -ne 'check-only-passed') {
             throw "Unexpected Phase 1 CheckOnly result: $($report.result)"
           }
