@@ -1,0 +1,48 @@
+diff --git a/aurora-main/CMakeLists.txt b/aurora-main/CMakeLists.txt
+index 6a0ef53..4536f10 100644
+--- a/aurora-main/CMakeLists.txt
++++ b/aurora-main/CMakeLists.txt
+@@ -8,6 +8,20 @@ set(CMAKE_C_STANDARD 11)
+ set(CMAKE_CXX_STANDARD 20)
+ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ 
++# NSMBW Xbox port: Windows Store (UWP/AppContainer) lane. This is detection
++# and defaults only; dependency providers for the Store lane arrive in a
++# later patch, and desktop Windows configuration is unchanged.
++set(AURORA_WINDOWS_STORE OFF)
++if (WIN32 AND CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
++  set(AURORA_WINDOWS_STORE ON)
++endif ()
++
++if (AURORA_WINDOWS_STORE)
++  option(AURORA_BUILD_TESTS "Build and register Aurora CTest targets" OFF)
++else ()
++  option(AURORA_BUILD_TESTS "Build and register Aurora CTest targets" ON)
++endif ()
++
+ option(AURORA_ENABLE_GX "Enable GX implementation and WebGPU renderer" ON)
+ option(AURORA_ENABLE_DVD "Enable DVD implementation backed by nod" OFF)  # TODO: need to fix tests
+ option(AURORA_ENABLE_CARD "Enable CARD implementation based on kabufuda" ON)
+@@ -80,7 +94,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+   add_subdirectory(examples)
+ endif ()
+ 
+-if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR AND NOT CMAKE_CROSSCOMPILING)
++if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR AND NOT CMAKE_CROSSCOMPILING AND AURORA_BUILD_TESTS)
+   enable_testing()
+   add_subdirectory(tests)
+ endif ()
+diff --git a/aurora-main/cmake/aurora_core.cmake b/aurora-main/cmake/aurora_core.cmake
+index 65ffaea..a103dd3 100644
+--- a/aurora-main/cmake/aurora_core.cmake
++++ b/aurora-main/cmake/aurora_core.cmake
+@@ -10,6 +10,9 @@ add_library(aurora::core ALIAS aurora_core)
+ set_target_properties(aurora_core PROPERTIES FOLDER "aurora")
+ 
+ target_compile_definitions(aurora_core PUBLIC AURORA TARGET_PC)
++if (AURORA_WINDOWS_STORE)
++    target_compile_definitions(aurora_core PUBLIC AURORA_WINDOWS_STORE=1)
++endif ()
+ target_include_directories(aurora_core PUBLIC include)
+ target_link_libraries(aurora_core PUBLIC fmt::fmt ${AURORA_SDL3_TARGET} xxhash)
+ target_link_libraries(aurora_core PRIVATE absl::btree absl::flat_hash_map sqlite3 TracyClient)
