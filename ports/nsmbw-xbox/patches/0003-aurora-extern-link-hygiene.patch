@@ -1,0 +1,181 @@
+diff --git a/aurora-main/cmake/aurora_core.cmake b/aurora-main/cmake/aurora_core.cmake
+index a103dd3..fd22786 100644
+--- a/aurora-main/cmake/aurora_core.cmake
++++ b/aurora-main/cmake/aurora_core.cmake
+@@ -15,15 +15,24 @@ if (AURORA_WINDOWS_STORE)
+ endif ()
+ target_include_directories(aurora_core PUBLIC include)
+ target_link_libraries(aurora_core PUBLIC fmt::fmt ${AURORA_SDL3_TARGET} xxhash)
++if (AURORA_WINDOWS_STORE AND TARGET aurora::uwp_dep)
++    # libuwp is part of the Store runtime surface (entry/window helpers and a
++    # Dawn DLL dependency). Propagate it so final executables/packages see the
++    # same imported target instead of rediscovering DLLs ad hoc later.
++    target_link_libraries(aurora_core PUBLIC aurora::uwp_dep)
++endif ()
+ target_link_libraries(aurora_core PRIVATE absl::btree absl::flat_hash_map sqlite3 TracyClient)
+ if (AURORA_ENABLE_GX AND AURORA_CACHE_USE_ZSTD)
+     target_compile_definitions(aurora_core PRIVATE AURORA_CACHE_USE_ZSTD)
+     target_link_libraries(aurora_core PRIVATE libzstd_static)
+ endif ()
+ 
+-if (CMAKE_SYSTEM_NAME STREQUAL Windows)
++if (CMAKE_SYSTEM_NAME STREQUAL Windows OR CMAKE_SYSTEM_NAME STREQUAL WindowsStore)
+     # stuff for fetching system info.
+-    target_link_libraries(aurora_core PRIVATE ntdll dxgi advapi32 user32)
++    target_link_libraries(aurora_core PRIVATE ntdll dxgi)
++    if (NOT AURORA_WINDOWS_STORE)
++        target_link_libraries(aurora_core PRIVATE advapi32 user32)
++    endif ()
+ elseif (APPLE)
+     target_sources(aurora_core PRIVATE lib/system_info_mac.mm)
+ endif ()
+diff --git a/aurora-main/extern/CMakeLists.txt b/aurora-main/extern/CMakeLists.txt
+index 90ba8be..e59f078 100644
+--- a/aurora-main/extern/CMakeLists.txt
++++ b/aurora-main/extern/CMakeLists.txt
+@@ -60,6 +60,12 @@ endif ()
+ 
+ if (AURORA_WINDOWS_STORE)
+   include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/AuroraUwpDep.cmake)
++
++  # The Store lane links the pinned prebuilt SDL; it must never compile the
++  # vendored SDL/libusb objects used only by the desktop GameCube-adapter path.
++  set(AURORA_SDL3_LIBUSB OFF CACHE BOOL "Build the vendored SDL3 with libusb on Windows (official GameCube adapter support)" FORCE)
++  set(SDL_HIDAPI_LIBUSB OFF CACHE BOOL "" FORCE)
++  set(SDL_HIDAPI_LIBUSB_SHARED OFF CACHE BOOL "" FORCE)
+ endif ()
+ 
+ if (AURORA_ENABLE_GX)
+@@ -152,6 +158,60 @@ if (MINGW AND TARGET fmt)
+ endif ()
+ 
+ if (AURORA_ENABLE_GX)
++  if (AURORA_WINDOWS_STORE)
++    # Use zlib/libpng from the same pinned main uwp-dep bundle as Dawn/nod.
++    # Building or finding desktop copies here would duplicate symbols and pull
++    # non-AppContainer code into the Store link, so fail closed if the bundle
++    # does not provide them.
++    if (NOT DEFINED AURORA_UWP_DEP_ROOT)
++      message(FATAL_ERROR
++        "aurora: Windows Store zlib/libpng require AURORA_UWP_DEP_ROOT from "
++        "cmake/AuroraUwpDep.cmake (patch 0002); refusing desktop fallback.")
++    endif ()
++    set(_aurora_uwp_x64 "${AURORA_UWP_DEP_ROOT}/x64")
++    foreach (_aurora_uwp_required IN ITEMS
++        "${_aurora_uwp_x64}/include/zlib.h"
++        "${_aurora_uwp_x64}/lib/z.lib"
++        "${_aurora_uwp_x64}/bin/z.dll"
++        "${_aurora_uwp_x64}/include/png.h"
++        "${_aurora_uwp_x64}/lib/libpng16.lib"
++        "${_aurora_uwp_x64}/bin/libpng16.dll")
++      if (NOT EXISTS "${_aurora_uwp_required}")
++        message(FATAL_ERROR
++          "aurora: Windows Store zlib/libpng must come from the pinned main "
++          "uwp-dep bundle; missing ${_aurora_uwp_required}. Refusing to "
++          "find_package or FetchContent desktop copies in the Store lane.")
++      endif ()
++    endforeach ()
++
++    if (NOT TARGET zlib_uwp_depot)
++      add_library(zlib_uwp_depot SHARED IMPORTED GLOBAL)
++      set_target_properties(zlib_uwp_depot PROPERTIES
++        IMPORTED_LOCATION "${_aurora_uwp_x64}/bin/z.dll"
++        IMPORTED_IMPLIB "${_aurora_uwp_x64}/lib/z.lib"
++        INTERFACE_INCLUDE_DIRECTORIES "${_aurora_uwp_x64}/include")
++    endif ()
++    if (NOT TARGET ZLIB::ZLIB)
++      add_library(ZLIB::ZLIB ALIAS zlib_uwp_depot)
++    endif ()
++
++    if (NOT TARGET libpng16_uwp_depot)
++      add_library(libpng16_uwp_depot SHARED IMPORTED GLOBAL)
++      set_target_properties(libpng16_uwp_depot PROPERTIES
++        IMPORTED_LOCATION "${_aurora_uwp_x64}/bin/libpng16.dll"
++        IMPORTED_IMPLIB "${_aurora_uwp_x64}/lib/libpng16.lib"
++        INTERFACE_INCLUDE_DIRECTORIES "${_aurora_uwp_x64}/include;${_aurora_uwp_x64}/include/libpng16"
++        INTERFACE_LINK_LIBRARIES ZLIB::ZLIB)
++    endif ()
++    if (NOT TARGET PNG::PNG)
++      add_library(PNG::PNG ALIAS libpng16_uwp_depot)
++    endif ()
++
++    message(STATUS "aurora: Using zlib/libpng from pinned uwp-dep (${AURORA_UWP_DEP_ROOT})")
++    unset(_aurora_uwp_required)
++    unset(_aurora_uwp_x64)
++  endif ()
++
+   if (NOT TARGET ZLIB::ZLIB)
+     aurora_find_package_global(ZLIB QUIET)
+   endif ()
+@@ -221,6 +281,18 @@ if (AURORA_ENABLE_GX)
+     message(STATUS "aurora: Using existing libpng")
+   endif ()
+ 
++  # Recipe parity: if a provider ever compiles libpng in the Store/MSVC lane,
++  # its unary-minus-on-unsigned warning must not become link/compile noise.
++  # The normal Store path above uses the imported bundle libpng instead.
++  if (AURORA_WINDOWS_STORE AND MSVC)
++    foreach (_aurora_png_target IN ITEMS png_shared png_static)
++      if (TARGET ${_aurora_png_target})
++        target_compile_options(${_aurora_png_target} PRIVATE /wd4146)
++      endif ()
++    endforeach ()
++    unset(_aurora_png_target)
++  endif ()
++
+   aurora_find_package_global(Freetype QUIET)
+   if (NOT TARGET Freetype::Freetype)
+     message(STATUS "aurora: Fetching Freetype")
+@@ -300,6 +372,10 @@ if (AURORA_ENABLE_GX)
+     message(STATUS "aurora: Using existing sqlite3")
+   endif ()
+ 
++  if (AURORA_WINDOWS_STORE AND TARGET sqlite3)
++    target_compile_definitions(sqlite3 PRIVATE SQLITE_OS_WINRT=1)
++  endif ()
++
+   if (AURORA_CACHE_USE_ZSTD)
+     if (NOT TARGET libzstd_static)
+       message(STATUS "aurora: Fetching zstd")
+@@ -343,6 +419,41 @@ if (AURORA_ENABLE_GX)
+   endif ()
+ endif ()
+ 
++if (AURORA_WINDOWS_STORE AND NOT TARGET TracyClient)
++  # Store lane: provide Tracy headers only. Do not build or link the desktop
++  # TracyClient object/network/profiler code into an AppContainer binary.
++  set(_aurora_tracy_tgz "${CMAKE_BINARY_DIR}/aurora_deps/tracy-a64b9a20294d59421a2f57aeca3c6383d8c48169.tar.gz")
++  set(_aurora_tracy_extract "${CMAKE_BINARY_DIR}/aurora_deps/tracy-src")
++  set(_aurora_tracy_marker "${_aurora_tracy_extract}/.aurora_tracy_extracted")
++  if (NOT EXISTS "${_aurora_tracy_marker}")
++    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/aurora_deps")
++    file(DOWNLOAD
++      "https://github.com/wolfpld/tracy/archive/a64b9a20294d59421a2f57aeca3c6383d8c48169.tar.gz"
++      "${_aurora_tracy_tgz}"
++      EXPECTED_HASH SHA256=24d342b5127d7f659dc3cf94f24347b348cc736f25b17a691fd7f69541937658
++      TLS_VERIFY ON)
++    file(MAKE_DIRECTORY "${_aurora_tracy_extract}")
++    file(ARCHIVE_EXTRACT INPUT "${_aurora_tracy_tgz}" DESTINATION "${_aurora_tracy_extract}")
++    file(WRITE "${_aurora_tracy_marker}" "")
++  endif ()
++  file(GLOB _aurora_tracy_roots LIST_DIRECTORIES TRUE "${_aurora_tracy_extract}/tracy-*")
++  if (NOT _aurora_tracy_roots)
++    message(FATAL_ERROR "aurora: Tracy archive layout unexpected under ${_aurora_tracy_extract}")
++  endif ()
++  list(GET _aurora_tracy_roots 0 _aurora_tracy_root)
++  if (NOT EXISTS "${_aurora_tracy_root}/public/tracy/Tracy.hpp")
++    message(FATAL_ERROR "aurora: Tracy public headers missing at ${_aurora_tracy_root}/public/tracy")
++  endif ()
++  message(STATUS "aurora: Using Tracy headers only for Windows Store (${_aurora_tracy_root}/public)")
++  add_library(TracyClient INTERFACE)
++  target_include_directories(TracyClient INTERFACE "${_aurora_tracy_root}/public")
++  unset(_aurora_tracy_tgz)
++  unset(_aurora_tracy_extract)
++  unset(_aurora_tracy_marker)
++  unset(_aurora_tracy_roots)
++  unset(_aurora_tracy_root)
++endif ()
++
+ if (NOT TARGET TracyClient)
+   message(STATUS "aurora: Fetching Tracy")
+ 

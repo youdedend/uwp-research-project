@@ -79,7 +79,7 @@ Do **not** run `configure-native.ps1` first on a clean tree. `runtime/CMakeLists
 
    Do not substitute a random system Ninja/CMake/clang: the whole point is replaying *this* build. Keep the database under ignored `work/` unless you have reviewed the local paths it contains.
 
-**Gate G1:** the pristine PC build exits 0, plays World 1-1, saves/reloads, and `compile_commands.json` is captured. Record PC specs, build time, compile-command count/hash, and the manual result in `STATUS.md`. Only then apply `patches/0001-aurora-store-detection.patch` and `patches/0002-aurora-uwp-dep-providers.patch` in series and repeat the desktop build as their no-behaviour-change gate.
+**Gate G1:** the pristine PC build exits 0, plays World 1-1, saves/reloads, and `compile_commands.json` is captured. Record PC specs, build time, compile-command count/hash, and the manual result in `STATUS.md`. Only then apply `patches/0001-aurora-store-detection.patch`, `patches/0002-aurora-uwp-dep-providers.patch`, and `patches/0003-aurora-extern-link-hygiene.patch` in series and repeat the desktop build as their no-behaviour-change gate.
 
 ## Phase 2 — Aurora rebase + Store compile histogram
 

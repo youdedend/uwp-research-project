@@ -27,7 +27,7 @@
 
 ## Automated checks
 
-GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the repository validator, both Python tool entry points, Windows PowerShell parsing for every `.ps1`, the pinned-source bootstrap and UWP audit on Ubuntu and Windows, a disposable series apply-check for Aurora patches `0001`-`0002`, and the NSMBW Phase 1 script in `CheckOnly` mode. It deliberately does **not** run the real game translation/build: no extracted game belongs in this public repository or on a GitHub-hosted runner. The full game-dependent build remains a local Windows step.
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the repository validator, both Python tool entry points, Windows PowerShell parsing for every `.ps1`, the pinned-source bootstrap and UWP audit on Ubuntu and Windows, a disposable series apply-check for Aurora patches `0001`-`0003`, and the NSMBW Phase 1 script in `CheckOnly` mode. It deliberately does **not** run the real game translation/build: no extracted game belongs in this public repository or on a GitHub-hosted runner. The full game-dependent build remains a local Windows step.
 
 ## Safety & legal boundaries
 

@@ -8,6 +8,7 @@ Patches live here as small, numbered, anchored diffs against the exact commits i
 |---|---|---|
 | [`0001-aurora-store-detection.patch`](0001-aurora-store-detection.patch) | NSMBW `v0.3.1` `aurora-main/CMakeLists.txt`, `aurora-main/cmake/aurora_core.cmake` (+18/−1) | Written 2026-11-04. `git apply --check` + apply verified on a clean pinned clone (tree restored after). CMake detection/defaults only. **PC build gate still pending** — not yet configured/built anywhere |
 | [`0002-aurora-uwp-dep-providers.patch`](0002-aurora-uwp-dep-providers.patch) | NSMBW `v0.3.1` Aurora provider layer: new `cmake/AuroraUwpDep.cmake`, Dawn/SDL/nod provider branches, provider enum/defaults, one Store-only include from `extern/CMakeLists.txt` (+287/−10) | Written after `0001`. Series apply (`0001` then `0002`) and `git diff --check` verified on a clean pinned clone. CMake module/provider logic was exercised in synthetic local harnesses: missing SDL root fails closed; layout fixtures select `uwp_dep` and create `dawn::webgpu_dawn`, `SDL3::SDL3`, `nod::nod`, and `aurora::uwp_dep`. **No real UWP compile/link or PC rebuild gate has run yet**. SDL must come from the separate true-UWP checkout; the main bundle's desktop SDL is explicitly rejected by design |
+| [`0003-aurora-extern-link-hygiene.patch`](0003-aurora-extern-link-hygiene.patch) | NSMBW `v0.3.1` Aurora `extern/CMakeLists.txt` + `cmake/aurora_core.cmake` (+122/−2) | Written after `0002`. Series apply (`0001→0002→0003`) and `git diff --check` verified on a clean pinned clone. Synthetic CMake harnesses verified: missing bundle zlib fails closed; layout fixtures create `ZLIB::ZLIB`/`PNG::PNG` from the bundle with PNG→ZLIB interface linkage; Store Tracy becomes an `INTERFACE_LIBRARY` with the pinned header tree; stubbed `aurora_core` links `aurora::uwp_dep;ntdll;dxgi` and not desktop `advapi32;user32`. Store lane also forces vendored SDL/libusb off and defines `SQLITE_OS_WINRT=1`. **No real Windows compile/link or PC rebuild gate has run yet** |
 
 Apply from this repository’s root, in series order (patch paths are relative to the NSMBW repo root — no `--directory`; the `..\..\patches` argument is resolved from inside the `-C` clone directory):
 
@@ -16,6 +17,8 @@ git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply --check ..
 git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply ..\..\patches\0001-aurora-store-detection.patch
 git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply --check ..\..\patches\0002-aurora-uwp-dep-providers.patch
 git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply ..\..\patches\0002-aurora-uwp-dep-providers.patch
+git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply --check ..\..\patches\0003-aurora-extern-link-hygiene.patch
+git -C ports\nsmbw-xbox\work\NSMB-Wii-Multiplayer-Recompilation apply ..\..\patches\0003-aurora-extern-link-hygiene.patch
 ```
 
 ## Series plan

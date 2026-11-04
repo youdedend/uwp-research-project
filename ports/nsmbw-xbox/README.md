@@ -1,6 +1,6 @@
 # New Super Mario Bros. Wii → Xbox Series S (Developer Mode UWP)
 
-**Status: Phase 1 ready to run on the Windows build PC; no Xbox build exists yet.** Phase 0 pinning/audit is complete, the first two small Aurora patches (`0001` Store detection, `0002` fail-closed UWP dependency providers) are written and series-apply-verified, and `tools/run-phase1-pc.ps1` now encodes the pristine upstream PC baseline (translator → shards → configure → build → `compile_commands.json`). This folder does **not** contain the game, extracted game files, generated game code, prebuilt UWP libraries, certificates, or a ready-to-install package. See [`STATUS.md`](STATUS.md) for the exact evidence boundary.
+**Status: Phase 1 ready to run on the Windows build PC; no Xbox build exists yet.** Phase 0 pinning/audit is complete, the first three small Aurora patches (`0001` Store detection, `0002` fail-closed UWP dependency providers, `0003` extern/link hygiene) are written and series-apply-verified, and `tools/run-phase1-pc.ps1` now encodes the pristine upstream PC baseline (translator → shards → configure → build → `compile_commands.json`). This folder does **not** contain the game, extracted game files, generated game code, prebuilt UWP libraries, certificates, or a ready-to-install package. See [`STATUS.md`](STATUS.md) for the exact evidence boundary.
 
 ## The port in one paragraph
 
@@ -53,7 +53,7 @@ The repository-level workflow [`../../.github/workflows/ci.yml`](../../.github/w
 
 - repository validation (Python syntax, JSON/TOML/XML parsing, Markdown links, lock-file pins/hashes, forbidden game/binary artifacts) plus both Python CLIs' `--help` entry points;
 - parsing of every PowerShell script with Windows PowerShell on `windows-latest`;
-- on Ubuntu, the real pinned-source bootstrap with the WiiCompiled baseline, the read-only UWP audit, and a check/apply/diff of patches `0001`-`0002` in series in a disposable clone;
+- on Ubuntu, the real pinned-source bootstrap with the WiiCompiled baseline, the read-only UWP audit, and a check/apply/diff of patches `0001`-`0003` in series in a disposable clone;
 - on Windows, the real `bootstrap.ps1` and pinned audit, .NET 8 setup, and `run-phase1-pc.ps1 -CheckOnly` against an empty layout-only fixture.
 
 That Windows job is a script/prerequisite test, **not** a game build: GitHub-hosted runners have no access to the owner's extracted `SMNE01` rev 1 folder, and this public repository must never receive it. Full translation/build/gameplay and all Series S testing still require the local Windows PC/console flow above (or a private self-hosted runner that already has the owner's game folder).
@@ -70,7 +70,7 @@ That Windows job is a script/prerequisite test, **not** a game build: GitHub-hos
 | [`tools/audit_uwp.py`](tools/audit_uwp.py) | Read-only pin check, patch dry-run, desktop-API inventory |
 | [`tools/run-phase1-pc.ps1`](tools/run-phase1-pc.ps1) | Windows-only pristine PC baseline: prerequisites, bootstrap, upstream tools/deps, game validation, translator, build, compile-database capture, local JSON report |
 | [`overlay/README.md`](overlay/README.md) | Entry-point, logging, path, and feature-exclusion design for our new code |
-| [`patches/README.md`](patches/README.md) | Patch-series rules + landed patches (small, anchored, behind defines, PC build stays green). Landed: `0001-aurora-store-detection.patch` and `0002-aurora-uwp-dep-providers.patch` — both apply cleanly in series; build gate pending |
+| [`patches/README.md`](patches/README.md) | Patch-series rules + landed patches (small, anchored, behind defines, PC build stays green). Landed: `0001-aurora-store-detection.patch`, `0002-aurora-uwp-dep-providers.patch`, and `0003-aurora-extern-link-hygiene.patch` — all apply cleanly in series; build gate pending |
 | [`package/`](package/README.md) | Unvalidated manifest/config templates and the `LocalState` layout contract |
 | [`reports/`](reports/2026-11-04-phase0-audit.md) | Dated Phase 0 audit evidence plus the fill-in Phase 1 PC report template |
 
