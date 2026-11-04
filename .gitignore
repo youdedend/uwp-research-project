@@ -1,0 +1,8 @@
+# Local clones / build sandboxes (port tooling uses ports/nsmbw-xbox/work/).
+/work/
+
+# Python / editor scratch
+__pycache__/
+*.pyc
+.vscode/
+.idea/

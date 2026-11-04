@@ -1,0 +1,29 @@
+# Port work area: pinned clones, PC/Store build outputs, object folders.
+work/
+build/
+build-uwp/
+obj/
+obj-deps/
+staging/
+
+# Never commit: game inputs, generated game content, saves, packages, keys.
+GameAssets/
+*.wbfs
+*.iso
+*.wbfs.*
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.exe
+*.dll
+*.pfx
+*.cer
+*.pvk
+*.snk
+NAND/
+Saves/
+
+# Local audit runs write dated reports deliberately; keep scratch logs out.
+reports/*-local.*
+*.log

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  UNVALIDATED TEMPLATE (Phase 0) for the NSMBW Xbox Series S UWP port.
+  Modeled on the structure of jajdp/retro-rewind-xbox's proven manifest (MIT),
+  reduced for this port's offline, couch-only v1. It has NOT been packed,
+  signed or installed yet.
+
+  CHANGE before packaging (see README.md in this folder):
+    - Identity Name:            your own package name.
+    - Identity Publisher:       EXACTLY your signing certificate's subject.
+    - PhoneProductId:           your own GUID ([guid]::NewGuid()).
+    - PublisherDisplayName / DisplayName (twice).
+    - Identity Version:         bump for EVERY new package, or the console
+                                will not replace the installed one.
+
+  EntryPoint="uwp.App" assumes the same libuwp-style bridge the recipe uses.
+  Confirm against the final, license-verified UWP bundle headers before
+  Phase 4; do not debug a guessed entry point on the console.
+
+  Capabilities are deliberately smaller than the recipe's online manifest:
+  v1 is offline (no internet/privateNetwork), reads game data only from its
+  own LocalState (no broadFileSystemAccess / removableStorage), and contains
+  statically compiled native code only (no codeGeneration). If activation or
+  a later phase proves one necessary, add it then - with the failing log
+  line recorded in ../STATUS.md as the justification.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap mp rescap">
+
+  <Identity
+    Name="CHANGE-ME-NSMBW-Xbox"
+    Publisher="CN=CHANGE-ME"
+    Version="0.0.1.0"
+    ProcessorArchitecture="x64" />
+
+  <mp:PhoneIdentity PhoneProductId="00000000-0000-0000-0000-000000000001" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+
+  <Properties>
+    <DisplayName>New Super Mario Bros. Wii (Unofficial Dev Port)</DisplayName>
+    <PublisherDisplayName>CHANGE-ME</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+    <!-- Required even though CRT DLLs could be copied into the package:
+         omitting this dependency is one of the two known causes of the
+         silent activation failure 0x8027025B (the other is a PE subsystem
+         version below 6.2; see ../BUILD-ORDER.md Phase 4). -->
+    <PackageDependency Name="Microsoft.VCLibs.140.00" MinVersion="14.0.33519.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us"/>
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+      Executable="NSMBW.exe"
+      EntryPoint="uwp.App">
+      <uap:VisualElements
+        DisplayName="New Super Mario Bros. Wii (Unofficial Dev Port)"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        Description="Unofficial personal Developer Mode port. Bring your own game (USA SMNE01 rev 1)."
+        BackgroundColor="transparent">
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Needed so the UWP game category gets the larger Dev Mode resource
+         envelope the recipe relies on; keep expansions evidence-based. -->
+    <rescap:Capability Name="expandedResources" />
+  </Capabilities>
+</Package>

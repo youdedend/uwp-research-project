@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "project": "nsmbw-xbox-series-s",
+  "created": "2026-11-04",
+  "target": {
+    "console": "Xbox Series S",
+    "mode": "Developer Mode UWP (AppContainer), x64, personal/testing use",
+    "consoleDeveloperModeConfirmedByUser": true,
+    "buildPcConfirmedByUser": "Windows PC with Visual Studio 2022 available",
+    "confirmationDate": "2026-11-04",
+    "firstMilestone": "Couch-only UWP build: title screen -> World 1-1 -> save/reload -> 30-minute standalone soak",
+    "deferred": [
+      "LAN/Tailscale netplay",
+      "self-updater",
+      "desktop launcher and folder picker",
+      "mods / texture packs",
+      "Newer Super Mario Bros. Wii variant (SMNE03)"
+    ]
+  },
+  "requiredGameInput": {
+    "title": "New Super Mario Bros. Wii",
+    "disc": "USA SMNE01 revision 1",
+    "userMustSupplyLegallyObtainedCopy": true,
+    "confirmedByUser": true,
+    "confirmationDate": "2026-11-04",
+    "expectedCleanMainDolSha1CheckedByUpstreamTool": "97b2035db94d3092ad34c6a38e67ae907402b3c0",
+    "note": "User confirmed possession of the exact revision on 2026-11-04. Phase 1 still lets upstream unpack_game.py validate the extracted folder and clean main.dol before translation.",
+    "repositoryMustNeverContain": [
+      "disc images",
+      "extracted game files",
+      "generated/translated game code",
+      "game saves or NAND images containing user data",
+      "signing certificates or private keys",
+      "built .msix/.appx packages or game executables"
+    ]
+  },
+  "repositories": [
+    {
+      "id": "nsmbw",
+      "name": "WitherBlitz/NSMB-Wii-Multiplayer-Recompilation",
+      "url": "https://github.com/WitherBlitz/NSMB-Wii-Multiplayer-Recompilation.git",
+      "ref": "v0.3.1",
+      "commit": "aa7cf830837358d241e734e94741405c7c824ab2",
+      "license": "GPL-3.0",
+      "role": "Primary porting target: runtime, customized aurora-main, translator config and Windows-first build scripts.",
+      "cloneByDefault": true
+    },
+    {
+      "id": "retro-rewind-xbox",
+      "name": "jajdp/retro-rewind-xbox",
+      "url": "https://github.com/jajdp/retro-rewind-xbox.git",
+      "ref": "main",
+      "commit": "75e96a662ebb97a937fd27f474d0575669dcd4a9",
+      "license": "MIT",
+      "role": "Proven Mario Kart Wii / WiiCompiled UWP adaptation recipe. Tested upstream on Series X only; Series S explicitly untested there.",
+      "cloneByDefault": true
+    },
+    {
+      "id": "wiicompiled-v0.2.31",
+      "name": "patchzyy/Wiicompiled",
+      "url": "https://github.com/patchzyy/Wiicompiled.git",
+      "ref": "v0.2.31",
+      "commit": "88b990b0602c642fe17cce6996af8c6ad63e663b",
+      "license": "GPL-3.0",
+      "role": "Baseline named by the jajdp recipe. Its vendored aurora-main is the closest public comparison point for NSMBW's Aurora fork, but the recipe patch still does not apply cleanly to it.",
+      "cloneByDefault": false
+    },
+    {
+      "id": "wiicompiled-current-reference",
+      "name": "patchzyy/Wiicompiled",
+      "url": "https://github.com/patchzyy/Wiicompiled.git",
+      "ref": "main snapshot inspected 2026-11-04",
+      "commit": "0d5c402d0366640a294bf9c699068299591f7eff",
+      "auroraSubmoduleCommit": "33067e34a17ca680eb961d9e0f3d48ddb22a7d7f",
+      "license": "GPL-3.0",
+      "role": "Reference only. Do not rebase NSMBW onto this yet: its Aurora tree differs from NSMBW's at 293 paths in a name-only diff.",
+      "cloneByDefault": false
+    }
+  ],
+  "externalPrebuiltsToVerifyBeforeUse": [
+    {
+      "id": "uwp-dep-main",
+      "name": "XboxEmulationHub/uwp-dep",
+      "url": "https://github.com/XboxEmulationHub/uwp-dep.git",
+      "formerUrlNamedInsideRecipeAuroraPatch": "https://github.com/SternXD/uwp-dep",
+      "branchContainingPin": "dusklight",
+      "commit": "6ba4aad18b0f149151784f31fd339225544e24f2",
+      "commitSubject": "UWP: Update SDL3 to 3.4.10",
+      "role": "Candidate local-only provider bundle for Dawn/WebGPU, nod, libpng, zlib, dxcompiler/dxil and libuwp. Do not vendor its binaries into this repository.",
+      "verificationStatus": "Metadata, layout, bundled component licence texts, selected SHA-256 hashes and PE import names inspected on 2026-11-04. Still requires the Phase 2 Windows link/API verification before use.",
+      "layout": "CMakeLists.txt defines only IMPORTED target LIBUWP; x64/include, x64/lib and x64/bin contain the prebuilts; lic/ contains Dawn, DXIL/DXC, libuwp, nod and SDL licence texts. The repository itself has no top-level licence detected by GitHub.",
+      "selectedDllSha256": {
+        "x64/bin/webgpu_dawn.dll": "84e072b10de1611c5a9c382044a19c9abdf476bdd9e2c99ba84382e99bc7d839",
+        "x64/bin/libuwp.dll": "7346b0af0e22ff4fd7dadf197101094ebb83a4362c7a8849ea4f71f7ab4c0793",
+        "x64/bin/nod.dll": "5d68efdafaaee524bd85a667ddde45a3c688ff4e89e3d22428b5aff4d994debf",
+        "x64/bin/libpng16.dll": "18f9a36e87ab9db002ea06b424dc1588fc1105c89e2995fcfebb32b68c824db3",
+        "x64/bin/z.dll": "cadc5248e03c5ff2640d4adfbb588e644a13bd5634d67b60b7c98a0958229b09",
+        "x64/bin/dxcompiler.dll": "f79943b02f73b621421b58a569fd6ee120d0023fb6bfa23844ecad6b00d6a295",
+        "x64/bin/dxil.dll": "62736e99aa534a942873f92b881a71b2cb6ad62b8d7481ea7a8ad8e9888a8056"
+      },
+      "selectedImportLibSha256": {
+        "x64/lib/webgpu_dawn.lib": "4f1d993737001c10159e7e2607d4e8f044e2a552edeb40a398c15fd520cc7ef9",
+        "x64/lib/nod.lib": "defa1bc48e98da06ee4257161a1b75dbd95da9c21bf1cfe8530fb67cd6c28949",
+        "x64/lib/libuwp.lib": "c058eaf7842a5755b24e562dfa5e51237583cb1d657aa93682b5505895ba1f31",
+        "x64/lib/libpng16.lib": "806e3d2af6bcc8de5c169f92568599993e532fd73f29361b23c132d22ce4536e",
+        "x64/lib/z.lib": "16dcb9c8b67fc0f9065f56d9f1921e8a06b1b13a1782f9c4d57b5bc3493219ad",
+        "x64/lib/dxcompiler.lib": "34237369336dd9a08916349449e7f8ee525a1cd17657c1fc40fd52bf8bb960f2"
+      },
+      "rejectedForSdl": "At this commit the SDL headers are 3.4.10, but x64/bin/SDL3.dll imports MSVCP140.dll, VCRUNTIME140.dll, VCRUNTIME140_1.dll and vccorlib140.dll without the _APP suffix (SHA-256 ffd331796ecd54de8461bf5cafe442e686d9d58b0a54c431a04986c90f66a7d7). Treat that SDL as the desktop build the recipe warns about; do not link or package it."
+    },
+    {
+      "id": "uwp-dep-sdl-true-app",
+      "name": "XboxEmulationHub/uwp-dep (separate SDL checkout)",
+      "url": "https://github.com/XboxEmulationHub/uwp-dep.git",
+      "branchContainingPin": "dusklight",
+      "commit": "ae39aa004ae127bd00f8262d28b401f8e4ed8728",
+      "commitSubject": "UWP: Update SDL3",
+      "relationship": "Parent of uwp-dep-main commit 6ba4aad18b0f149151784f31fd339225544e24f2. The recipe links and packages SDL from a separate uwp-dep-sdl folder and identifies this commit as the true-UWP SDL source.",
+      "sdlVersionFromHeaders": "3.4.8",
+      "verificationStatus": "PE import names and SHA-256 hashes inspected on 2026-11-04. x64/bin/SDL3.dll imports MSVCP140_APP.dll, VCRUNTIME140_APP.dll, VCRUNTIME140_1_APP.dll and vccorlib140_app.dll. Still requires the Phase 2 Windows link/API verification before use.",
+      "selectedSha256": {
+        "x64/bin/SDL3.dll": "d49ce990f754b7f88afa7b025e34941f1cefc6381a5f29e16110fea90dc22c9e",
+        "x64/lib/SDL3.lib": "360285493aeeeef18654c61a09d09212d13d1d58daa23a2dc26f122e3ac2d39d"
+      }
+    },
+    {
+      "id": "worleydl-uwp-dep-history",
+      "name": "worleydl/uwp-dep",
+      "url": "https://github.com/worleydl/uwp-dep.git",
+      "status": "Credited by the recipe for UWP dependency builds, and libuwp's bundled licence names Daniel Worley. The exact commits used by the recipe are now pinned in the two XboxEmulationHub/uwp-dep entries above, so do not substitute an arbitrary worleydl branch without re-verifying imports and hashes."
+    }
+  ],
+  "phase1PcBaseline": {
+    "runner": "tools/run-phase1-pc.ps1",
+    "upstreamOrder": [
+      "Launcher/Prepare-PortableTools.ps1",
+      "Launcher/Prepare-Dependencies.ps1 -Destination Dependencies",
+      "python projects/nsmbw/tools/unpack_game.py <extracted folder>",
+      "python projects/nsmbw/tools/prelink_rels.py",
+      "projects/nsmbw/tools/rebuild-all.ps1",
+      "ninja -C native-build -t compdb > native-build/compile_commands.json"
+    ],
+    "whyThisOrder": "runtime/CMakeLists.txt requires generated/build_shards/shards.cmake. Only the translator steps in rebuild-all.ps1 create it, so configure-native.ps1 must not be run first on a clean tree.",
+    "manualGate": "PC title screen -> World 1-1 -> save -> exit/relaunch -> save persists. The runner cannot verify gameplay."
+  },
+  "verifiedPhase0Facts": [
+    "jajdp patches/aurora-uwp.patch touches 22 Aurora files.",
+    "git apply --check of that patch against NSMBW v0.3.1 aurora-main fails; no files were modified by the check.",
+    "The same patch also fails against WiiCompiled v0.2.31 and the inspected current WiiCompiled Aurora submodule, so its exact preimage is another Aurora snapshot. Treat it as a semantic specification, not a drop-in patch.",
+    "NSMBW's Aurora is much closer to WiiCompiled v0.2.31 (69 differing paths) than to current WiiCompiled Aurora (293 differing paths).",
+    "NSMBW runtime already separates RuntimeMain(argc, argv) from main(), which is the right seam for a future WinRT/SDL entry shim.",
+    "On 2026-11-04 the user confirmed the exact USA SMNE01 revision 1 input, a Series S in Developer Mode, and a Windows PC with Visual Studio 2022.",
+    "A clean-tree PC build must generate translator shards before CMake configure; tools/run-phase1-pc.ps1 encodes upstream's unpack -> prelink -> rebuild-all order.",
+    "The recipe's main uwp-dep pin 6ba4aad1 contains a desktop-linked SDL3.dll by PE imports; its parent ae39aa00 contains the separate _APP-linked SDL3.dll the recipe actually links/packages."
+  ]
+}

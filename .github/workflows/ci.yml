@@ -1,0 +1,183 @@
+name: Repository and NSMBW port checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-validation:
+    name: Validate repository code and docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate structured files, links, source lock and forbidden artifacts
+        run: python .github/scripts/validate_repo.py
+
+      - name: Exercise Python command-line entry points
+        run: |
+          python ports/nsmbw-xbox/tools/bootstrap.py --help
+          python ports/nsmbw-xbox/tools/audit_uwp.py --help
+          python .github/scripts/validate_repo.py --help
+
+  powershell-parse:
+    name: Parse every PowerShell script with Windows PowerShell
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Parse all PowerShell scripts
+        shell: powershell
+        run: |
+          $failed = $false
+          $scripts = @(Get-ChildItem -Path $PWD -Recurse -File -Filter *.ps1 | Sort-Object FullName)
+          if ($scripts.Count -eq 0) {
+            Write-Error 'No PowerShell scripts were found.'
+            exit 1
+          }
+          foreach ($script in $scripts) {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              $script.FullName,
+              [ref]$tokens,
+              [ref]$parseErrors
+            )
+            if ($parseErrors -and $parseErrors.Count -gt 0) {
+              $failed = $true
+              Write-Host "PARSE FAILED: $($script.FullName)"
+              foreach ($parseError in $parseErrors) {
+                Write-Host $parseError.Message
+              }
+            } else {
+              Write-Host "parsed: $($script.FullName)"
+            }
+          }
+          if ($failed) { exit 1 }
+
+  pinned-sources:
+    name: Bootstrap pinned sources, audit, and apply patch 0001
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Clone pinned sources and run the read-only UWP audit
+        run: |
+          python ports/nsmbw-xbox/tools/bootstrap.py \
+            --work-dir "$RUNNER_TEMP/nsmbw-work" \
+            --with-baseline \
+            --audit
+
+      - name: Check and apply Aurora patch 0001 to the disposable clone
+        run: |
+          NSMBW="$RUNNER_TEMP/nsmbw-work/NSMB-Wii-Multiplayer-Recompilation"
+          PATCH="$GITHUB_WORKSPACE/ports/nsmbw-xbox/patches/0001-aurora-store-detection.patch"
+          git -C "$NSMBW" apply --check "$PATCH"
+          git -C "$NSMBW" apply "$PATCH"
+          git -C "$NSMBW" diff --check
+          grep -R "AURORA_BUILD_TESTS" "$NSMBW/aurora-main/CMakeLists.txt"
+          grep -R "AURORA_WINDOWS_STORE=1" "$NSMBW/aurora-main/cmake/aurora_core.cmake"
+          git -C "$NSMBW" diff --stat
+          git -C "$NSMBW" diff > "$RUNNER_TEMP/nsmbw-work/patch-0001-applied.diff"
+
+      - name: Upload audit and patch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinned-source-audit-and-patch-0001
+          path: |
+            ${{ runner.temp }}/nsmbw-work/BOOTSTRAP-REPORT.md
+            ${{ runner.temp }}/nsmbw-work/phase0-audit.md
+            ${{ runner.temp }}/nsmbw-work/patch-0001-applied.diff
+          if-no-files-found: warn
+          retention-days: 14
+
+  phase1-windows-checkonly:
+    name: Run Phase 1 CheckOnly on Windows (layout fixture only)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run the real bootstrap PowerShell wrapper and pinned audit
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File ports\nsmbw-xbox\tools\bootstrap.ps1 `
+            -WorkDir "$env:RUNNER_TEMP\nsmbw-work" `
+            -WithBaseline -Audit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Create layout-only fixture (not a game and not used for translation)
+        shell: pwsh
+        run: |
+          $fixture = Join-Path $env:RUNNER_TEMP 'phase1-layout-fixture'
+          New-Item -ItemType Directory -Path (Join-Path $fixture 'files') -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $fixture 'sys') -Force | Out-Null
+          New-Item -ItemType File -Path (Join-Path $fixture 'sys\boot.bin') -Force | Out-Null
+          New-Item -ItemType File -Path (Join-Path $fixture 'sys\main.dol') -Force | Out-Null
+
+      - name: Run Phase 1 prerequisite and pinned-clone checks
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File ports\nsmbw-xbox\tools\run-phase1-pc.ps1 `
+            -GameDir "$env:RUNNER_TEMP\phase1-layout-fixture" `
+            -WorkDir "$env:RUNNER_TEMP\nsmbw-work" `
+            -SkipBootstrap -CheckOnly
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify CheckOnly report
+        shell: pwsh
+        run: |
+          $reportPath = Join-Path $env:RUNNER_TEMP 'nsmbw-work\phase1\phase1-report.json'
+          $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
+          if ($report.result -ne 'check-only-passed') {
+            throw "Unexpected Phase 1 CheckOnly result: $($report.result)"
+          }
+          $report | ConvertTo-Json -Depth 8
+
+      - name: Upload Windows CheckOnly evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase1-windows-checkonly
+          path: |
+            ${{ runner.temp }}/nsmbw-work/BOOTSTRAP-REPORT.md
+            ${{ runner.temp }}/nsmbw-work/phase0-audit.md
+            ${{ runner.temp }}/nsmbw-work/phase1/phase1-report.json
+          if-no-files-found: warn
+          retention-days: 14

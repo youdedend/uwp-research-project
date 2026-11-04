@@ -1,0 +1,45 @@
+# NSMBW runtime configuration for the Xbox Series S UWP port (v1, couch-only).
+# Install location on the console:  LocalState\NSMBW\Config.toml
+# Keys below are the upstream runtime's own Config.toml keys
+# (runtime/include/runtime_config.h in NSMBW v0.3.1); only Xbox-relevant
+# choices are pinned here. Everything else keeps upstream defaults.
+
+[paths]
+# Relative paths resolve against this file's folder, so this means
+# LocalState\GameAssets\DATA - the owner's extracted USA SMNE01 rev 1 game
+# (files\ + sys\), uploaded via Xbox Device Portal. Never inside the .msix.
+dvd_root = "../GameAssets/DATA"
+
+[video]
+# 1.0 = the game's native render height scaling baseline. Raise only after
+# the Phase 5 Series S sweep measures real headroom; the recipe's numbers
+# are Series X numbers and do not transfer.
+resolution_multiplier = 1.0
+widescreen = true
+display_mode = "borderless"
+# Dawn on D3D12 is the only v1 graphics path (see ../AURORA-REBASE.md).
+# "auto" is kept so a future proven D3D11 fallback needs no config format
+# change; first-boot debugging should log which backend was selected.
+graphics_api = "auto"
+# Draw with still-compiling pipelines skipped instead of stalling the guest;
+# first-room shader stalls are measured separately in Phase 5.
+skip_unready_pipelines = true
+texture_replacements = false
+texture_dumps = false
+show_fps = false
+
+[audio]
+volume = 1.0
+music_volume = 1.0
+sound_effects_volume = 1.0
+ui_volume = 1.0
+voices_volume = 1.0
+muted = false
+
+[network]
+# v1 is offline/couch-only: guest TLS is stubbed and netplay is deferred.
+enabled = false
+
+[discord]
+# No named pipes inside an AppContainer; presence is compiled out in v1.
+enabled = false
