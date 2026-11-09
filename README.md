@@ -8,7 +8,7 @@ committed files back it (per the 2026-11-07 audit rules).
 
 | Folder | Status | Artifacts |
 |---|---|---|
-| `01-Core-Architecture/` | 🟡 in progress | `packaging-and-deployment.md` (appx/Device Portal case study) |
+| `01-Core-Architecture/` | 🟡 in progress | `packaging-and-deployment.md` (appx/Device Portal case study), `bloodborne-xbox-uwp-feasibility.md` (NO-GO dossier + streaming route) |
 | `02-Graphics-And-Shaders/` | ⬜ pending | — |
 | `03-Memory-CPU-And-JIT/` | 🟡 in progress | `dev-mode-memory-and-system-caps.md` (1/5/128 MB caps, App-vs-Game) |
 | `04-Filesystem-Mods-And-Caches/` | ⬜ pending | — |
