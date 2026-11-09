@@ -13,7 +13,7 @@ committed files back it (per the 2026-11-07 audit rules).
 | `03-Memory-CPU-And-JIT/` | 🟡 in progress | `dev-mode-memory-and-system-caps.md` (1/5/128 MB caps, App-vs-Game), `testproject-field-notes.md` (Series S field evidence) |
 | `04-Filesystem-Mods-And-Caches/` | ⬜ pending | — |
 | `05-Input-And-Audio/` | 🟡 in progress | `input-stack-gameinput-vs-wgi.md`, `audio-notes.md` |
-| `06-Boilerplates-And-Wrappers/` | ⬜ pending | — |
+| `06-Boilerplates-And-Wrappers/` | 🟡 in progress | `testproject-phase1-2a/` (item-2 recovery ladder patch + tests for Test-project) |
 
 Chat-only research (Phases 1–2, Blind Spots #1–#4, the progress audit) is **0 %-weighted**
 until it lands as files here. Next: graphics/present-chain study, filesystem/mods, the

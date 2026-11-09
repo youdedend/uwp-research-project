@@ -1,0 +1,431 @@
+diff --git a/.github/workflows/xbox.yml b/.github/workflows/xbox.yml
+index 704a9b2..6aa7ff6 100644
+--- a/.github/workflows/xbox.yml
++++ b/.github/workflows/xbox.yml
+@@ -193,6 +193,7 @@ jobs:
+           $tests = @(
+             @{ name = 'dense_arena'; include = 'xbox/graphics'; sources = @('xbox\tests\dense_arena_lifetime_test.cpp') },
+             @{ name = 'arena_admission_policy'; include = 'xbox/graphics'; sources = @('xbox\tests\arena_admission_policy_test.cpp') },
++            @{ name = 'recovery_ladder'; include = 'xbox/graphics'; sources = @('xbox\tests\recovery_ladder_test.cpp') },
+             # Which images the texture cache may free (a bound target, scene proxy or live video-out
+             # surface must stay) and the uid rule that makes a stored ImageId safe to re-check:
+             # freed behind the rasterizer's / upscaler's back, a slot index either trips
+diff --git a/gpu/shadps4/video_core/buffer_cache/buffer.cpp b/gpu/shadps4/video_core/buffer_cache/buffer.cpp
+index 07e97cd..05d3242 100644
+--- a/gpu/shadps4/video_core/buffer_cache/buffer.cpp
++++ b/gpu/shadps4/video_core/buffer_cache/buffer.cpp
+@@ -29,6 +29,9 @@ extern "C" uint64_t bbgpu_uwp_emergency_reclaim(uint64_t need);
+ extern "C" uint64_t bbgpu_uwp_wait_for_release(uint64_t need, uint32_t timeout_ms);
+ /* BUILD 3, item 14: the ladder's last rung - make the next attempt need less (step 3 = degrade). */
+ extern "C" uint64_t bbgpu_uwp_recovery_step(int32_t step, uint64_t need);
++/* Item 2, stage 2a: the ordered pre-allocation ladder (gpu/shim/bbgpu.cpp). flags bit0 = mid-draw
++ * (skips the Finish rung; see handoff failed-attempt #5). */
++extern "C" uint64_t bbgpu_uwp_prealloc_ladder(uint64_t need, int32_t flags);
+ extern "C" uint64_t bb_uwp_app_memory_usage(void);
+ /* B8: the big/slow allocation line (gpu/shim/bbgpu.cpp). */
+ extern "C" void bbgpu_note_alloc(uint64_t size, const char *kind, const char *caller,
+@@ -274,6 +277,35 @@ void UniqueBuffer::Create(vk::BufferCreateInfo& buffer_ci, MemoryType mem_type,
+             }
+         }
+ #endif
++        // bbport (item 2, stage 2a): the 250 MiB reserve floor. The headroom block above only fires
++        // once the allocation is already at risk (usage + room > limit); this fires earlier, when
++        // the request would leave less than kHeadroom (250 MiB) of the app budget free, and runs
++        // the ORDERED ladder from recovery_ladder.h before the transient peak lands. It frees,
++        // never refuses: the allocation below proceeds exactly as before (denial needs the stage
++        // 2b caller contracts). mid-draw=1: this ctor is reached from GetDenseArena after
++        // BeginRendering, so the Finish rung is skipped (failed-attempt #5); PopPending, retired
++        // release, image reclaim and the pager are the safe subset and stop at the first point the
++        // request is covered.
++        static const bool prealloc_recover = [] {
++            const char* env = std::getenv("BB_ARENA_ADMISSION_RECOVER");
++            return !env || env[0] != '0';
++        }();
++        if (prealloc_recover && mem_type == MemoryType::DeviceLocal &&
++            BbArenaAdmission::ShouldRecover(bb_uwp_app_memory_usage(), limit, buffer_ci.size)) {
++            const auto ladder_start = std::chrono::steady_clock::now();
++            const uint64_t freed = bbgpu_uwp_prealloc_ladder(buffer_ci.size, 1);
++            const auto ladder_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
++                                       std::chrono::steady_clock::now() - ladder_start)
++                                       .count();
++            std::printf("UWP recovery ladder (pre-alloc): reserve floor hit for a %llu KiB "
++                        "allocation; freed %llu MiB in %lld ms (usage %llu/%llu MiB)\n",
++                        static_cast<unsigned long long>(buffer_ci.size >> 10),
++                        static_cast<unsigned long long>(freed >> 20),
++                        static_cast<long long>(ladder_ms),
++                        static_cast<unsigned long long>(bb_uwp_app_memory_usage() >> 20),
++                        static_cast<unsigned long long>(limit >> 20));
++            std::fflush(stdout);
++        }
+         VkBuffer unsafe_buffer{};
+         // bbport: B8 - the allocation's size, the console's usage either side of it and how long it
+         // took; bbgpu_note_alloc decides whether the line is worth printing (32 MiB or 250 ms).
+diff --git a/gpu/shim/bbgpu.cpp b/gpu/shim/bbgpu.cpp
+index c2d0133..c3a71bd 100644
+--- a/gpu/shim/bbgpu.cpp
++++ b/gpu/shim/bbgpu.cpp
+@@ -26,6 +26,7 @@
+ #include <vector>
+ #include <SDL3/SDL.h>
+ #include "../bbgpu.h"
++#include "../../xbox/graphics/recovery_ladder.h"
+ #include "common/elf_info.h"
+ #include "common/logging/log.h"
+ #include "common/rdtsc.h"
+@@ -475,6 +476,64 @@ extern "C" void bbgpu_uwp_pressure_level(int level) {
+     std::fflush(stdout);
+ }
+ 
++/// bbport (item 2, stage 2a): the ordered pre-allocation ladder, run BEFORE a DeviceLocal
++/// allocation that would leave less than 250 MiB of the app budget (arena_admission_policy.h
++/// ShouldRecover). Rung order and gating live in xbox/graphics/recovery_ladder.h and are pinned by
++/// xbox/tests/recovery_ladder_test.cpp; this is the real rung supply:
++///   FinishGpu      -> scheduler.Finish() (skipped when flags bit0 = mid-draw; failed-attempt #5)
++///   PopPending     -> scheduler.PopPendingOperations()
++///   ReleaseRetired -> ReleaseRetiredArenas + staging idle trim
++///   ReclaimImages  -> TextureCache::EmergencyReclaim
++///   Pager          -> runtime_memory_page_out (bounded by the pager's own budgets)
++/// It frees, never refuses: the caller allocates afterwards no matter what this returns.
++extern "C" uint64_t bbgpu_uwp_prealloc_ladder(uint64_t need, int32_t flags) {
++    auto* r = Core::Memory::Instance()->GetRasterizer();
++    if (!r || need == 0) {
++        return 0;
++    }
++    const bool mid_draw = (flags & 1) != 0;
++    BbUwp::RecoveryHooks hooks;
++    hooks.finish_gpu = [](std::uint64_t) -> std::uint64_t {
++        auto* rr = Core::Memory::Instance()->GetRasterizer();
++        if (!rr) return 0;
++        rr->GetScheduler().Finish();
++        return 0;
++    };
++    hooks.pop_pending = [](std::uint64_t) -> std::uint64_t {
++        auto* rr = Core::Memory::Instance()->GetRasterizer();
++        if (!rr) return 0;
++        rr->GetScheduler().PopPendingOperations();
++        return 0;
++    };
++    hooks.release_retired = [](std::uint64_t) -> std::uint64_t {
++        auto* rr = Core::Memory::Instance()->GetRasterizer();
++        if (!rr) return 0;
++        auto& buffers = rr->GetBufferCache();
++        const uint64_t before = buffers.RetiredArenaBytes();
++        buffers.ReleaseRetiredArenas();
++        const uint64_t after = buffers.RetiredArenaBytes();
++        rr->GetRuntime().GetStagingPool().RequestIdleTrim();
++        return before > after ? before - after : 0;
++    };
++    hooks.reclaim_images = [](std::uint64_t still_short) -> std::uint64_t {
++        auto* rr = Core::Memory::Instance()->GetRasterizer();
++        if (!rr) return 0;
++        // EmergencyReclaim(0) is a request for zero bytes, not "whatever you can": keep the budget.
++        return rr->GetTextureCache().EmergencyReclaim(still_short ? still_short : (uint64_t{32} << 20));
++    };
++    hooks.pager = [](std::uint64_t still_short) -> std::uint64_t {
++        return runtime_memory_page_out(static_cast<size_t>(still_short ? still_short : (128ull << 20)));
++    };
++    const auto outcome = BbUwp::RunRecoveryLadder(hooks, need, mid_draw);
++    std::printf("UWP recovery ladder (pre-alloc): freed %llu MiB of the %llu MiB wanted in %d "
++                "rung(s)%s\n",
++                static_cast<unsigned long long>(outcome.freed >> 20),
++                static_cast<unsigned long long>(need >> 20), outcome.rungs_run,
++                outcome.finish_skipped ? " (Finish skipped: mid-draw)" : "");
++    std::fflush(stdout);
++    return outcome.freed;
++}
++
+ extern "C" uint64_t bbgpu_uwp_emergency_reclaim(uint64_t need) {
+     auto* r = Core::Memory::Instance()->GetRasterizer();
+     if (!r) {
+diff --git a/xbox/graphics/arena_admission_policy.h b/xbox/graphics/arena_admission_policy.h
+index 78358c8..da75898 100644
+--- a/xbox/graphics/arena_admission_policy.h
++++ b/xbox/graphics/arena_admission_policy.h
+@@ -17,6 +17,16 @@ inline bool BudgetFits(std::uint64_t usage, std::uint64_t limit, std::uint64_t b
+     return bytes <= limit - usage - headroom;
+ }
+ 
++/// Item 2, stage 2a: the pre-allocation recovery trigger ("require usage + size <= limit - 250 MiB").
++/// True means: run the ordered recovery ladder (recovery_ladder.h) and then STILL allocate. Denying,
++/// splitting or skipping the request is stage 2b and needs caller contracts first. Small
++/// allocations are not worth a ladder walk (kMinimum), and an unknown limit guards nothing.
++inline bool ShouldRecover(std::uint64_t usage, std::uint64_t limit, std::uint64_t bytes,
++                          std::uint64_t headroom = kHeadroom, std::uint64_t minimum = kMinimum) {
++    if (!limit || bytes < minimum) return false;
++    return !BudgetFits(usage, limit, bytes, headroom);
++}
++
+ inline std::uint64_t ProjectedLive(std::uint64_t live, std::uint64_t replaced,
+                                    std::uint64_t incoming) {
+     const std::uint64_t remaining = live > replaced ? live - replaced : 0;
+diff --git a/xbox/graphics/dense_buffers.cpp b/xbox/graphics/dense_buffers.cpp
+index 3648d6e..f437cc5 100644
+--- a/xbox/graphics/dense_buffers.cpp
++++ b/xbox/graphics/dense_buffers.cpp
+@@ -16,6 +16,10 @@
+ #include <set>
+ #include <utility>
+ 
++/* Item 2, stage 2a: pre-merge reclaim (retired arenas + images; gpu/shim/bbgpu.cpp). Declared at
++ * namespace scope: clang-cl rejects extern "C" inside function bodies (failed-attempt #4). */
++extern "C" uint64_t bbgpu_uwp_emergency_reclaim(uint64_t need);
++
+ namespace VideoCore {
+ 
+ void BufferCache::InitializeDenseBuffers() {
+@@ -84,6 +88,10 @@ const Buffer* BufferCache::GetDenseArena(u64 first_block, u64 last_block) {
+         const u64 mb = env ? std::strtoull(env, nullptr, 10) : 768;
+         return std::min<u64>(mb, 4096) << 20;
+     }();
++    static const bool recover_before_merge = [] {
++        const char* env = std::getenv("BB_ARENA_ADMISSION_RECOVER");
++        return !env || env[0] != '0';
++    }();
+     if (admission_diagnostics &&
+         !BbArenaAdmission::CapFits(arena_backed, replaced, incoming, cap)) {
+         std::printf("UWP arena admission OBSERVE ONLY: live %llu MiB - replaced %llu + new %llu "
+@@ -95,6 +103,24 @@ const Buffer* BufferCache::GetDenseArena(u64 first_block, u64 last_block) {
+                     (unsigned long long)(cap >> 20));
+         std::fflush(stdout);
+     }
++    // Item 2, stage 2a: make room BEFORE the merge allocates its transient peak (old + full new).
++    // The merge is the largest single allocation the app makes, and `.819` sat at live=912 MiB with
++    // 448 MiB retired while it happened. bbgpu_uwp_emergency_reclaim releases replaced arenas whose
++    // tick has signaled (no producer holds them) and takes images the collector may free - the same
++    // pin rules as every other reclaim path. NOT the pager here: runtime_memory_page_out takes the
++    // commit lock the guest fault path uses, and Test #22 showed an allocation storm through that
++    // lock looks like a 10 s stall. The allocation is never blocked (that is stage 2b): if the cap
++    // is still exceeded after reclaim, the merge proceeds and the OBSERVE line above is the record.
++    if (recover_before_merge &&
++        !BbArenaAdmission::CapFits(arena_backed, replaced, incoming, cap)) {
++        const u64 projected = BbArenaAdmission::ProjectedLive(arena_backed, replaced, incoming);
++        const u64 over = projected > cap ? projected - cap : 0;
++        const u64 freed = bbgpu_uwp_emergency_reclaim(over ? over : (u64{32} << 20));
++        std::printf("UWP arena admission: reclaimed %llu MiB before merge (over cap by %llu MiB); "
++                    "projection does not shrink until retirement settles\n",
++                    (unsigned long long)(freed >> 20), (unsigned long long)(over >> 20));
++        std::fflush(stdout);
++    }
+     // Construct outside dense_arena_mutex: an allocation failure can ask the retired-arena release
+     // path for memory, and that path takes the same mutex. Holding it here deadlocks recovery.
+     Buffer pending{instance, first_page << arena_page_bits, incoming, MemoryType::DeviceLocal};
+diff --git a/xbox/graphics/recovery_ladder.h b/xbox/graphics/recovery_ladder.h
+new file mode 100644
+index 0000000..5b3b9d5
+--- /dev/null
++++ b/xbox/graphics/recovery_ladder.h
+@@ -0,0 +1,80 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++// Xbox UWP pre-allocation recovery ladder (item 2, stage 2a): the ordered rungs from the follow-up
++// spec - Finish, PopPendingOperations, retired-arena release, texture emergency reclaim, pager
++// sweep - as one tested engine. Like dense_arena_lifetime.h this header is pure (no Vulkan, no
++// WinRT) so xbox/tests/recovery_ladder_test.cpp can pin the order and the gating on the build
++// machine; gpu/shim/bbgpu.cpp supplies the real rung implementations.
++//
++// Stage 2a rule: the ladder FREES, it never refuses. A call ends with the allocation proceeding
++// exactly as before; denial/split/skip is stage 2b and needs caller contracts (see the handoff
++// "Safe continuation for item 2"). The one concession to context: the Finish rung drains the
++// submission queue and therefore splits an active render pass, so it is skipped when the caller
++// may be mid-draw (handoff failed-attempt #5).
++#pragma once
++
++#include <cstdint>
++#include <initializer_list>
++
++namespace BbUwp {
++
++enum class RecoveryRung : int {
++    FinishGpu = 0,      // scheduler.Finish(): drain queued work so later frees can signal. Mid-draw: skipped.
++    PopPending = 1,     // scheduler.PopPendingOperations(): flush recorded ops; safe mid-draw.
++    ReleaseRetired = 2, // release replaced dense arenas (signaled ticks, no producer holds), staging idle trim.
++    ReclaimImages = 3,  // texture emergency reclaim: images the collector may take, pin rules intact.
++    Pager = 4,          // forced guest-page sweep (WC_GARLIC only), bounded by the pager's own budgets.
++};
++
++struct RecoveryHooks {
++    // Each rung receives the bytes still needed and reports what it freed (0 for rungs whose work
++    // is asynchronous, e.g. a staging trim request).
++    std::uint64_t (*finish_gpu)(std::uint64_t need) = nullptr;
++    std::uint64_t (*pop_pending)(std::uint64_t need) = nullptr;
++    std::uint64_t (*release_retired)(std::uint64_t need) = nullptr;
++    std::uint64_t (*reclaim_images)(std::uint64_t need) = nullptr;
++    std::uint64_t (*pager)(std::uint64_t need) = nullptr;
++};
++
++struct RecoveryOutcome {
++    std::uint64_t freed = 0;      // total bytes handed back across all rungs run
++    int rungs_run = 0;            // how many rungs actually executed
++    bool finish_skipped = false;  // Finish was requested but skipped because mid_draw
++    bool met_need = false;        // freed >= need before or at the end of the ladder
++};
++
++/// Runs the rungs in the fixed item-2 order and stops as soon as `need` is covered: the console
++/// has shown a 10 s frame stall from reclaim walks (docs/hardware-test-18), so a ladder that got
++/// what it came for must not keep walking. Null hooks are skipped; `need == 0` runs nothing.
++inline RecoveryOutcome RunRecoveryLadder(const RecoveryHooks& h, std::uint64_t need,
++                                         bool mid_draw) {
++    RecoveryOutcome out{};
++    if (need == 0) {
++        return out;
++    }
++    const auto remaining = [&]() -> std::uint64_t {
++        return out.freed >= need ? 0 : need - out.freed;
++    };
++    if (h.finish_gpu) {
++        if (mid_draw) {
++            out.finish_skipped = true; // failed-attempt #5: Finish inside a render pass resubmits it
++        } else {
++            out.freed += h.finish_gpu(remaining());
++            ++out.rungs_run;
++        }
++    }
++    for (std::uint64_t (*rung)(std::uint64_t) : {h.pop_pending, h.release_retired, h.reclaim_images,
++                                                 h.pager}) {
++        if (out.freed >= need) {
++            break;
++        }
++        if (!rung) {
++            continue;
++        }
++        out.freed += rung(remaining());
++        ++out.rungs_run;
++    }
++    out.met_need = out.freed >= need;
++    return out;
++}
++
++} // namespace BbUwp
+diff --git a/xbox/platform/main.cpp b/xbox/platform/main.cpp
+index 8c2ce9a..930c04c 100644
+--- a/xbox/platform/main.cpp
++++ b/xbox/platform/main.cpp
+@@ -830,6 +830,7 @@ static void ensure_default_ini(const std::string& ini_path) {
+         "swap_speed_test=1\n"
+         "swap_pool_decommit=1\n"
+         "arena_admission=1\n"
++        "arena_admission_recover=1\n"
+         "arena_live_cap_mb=768\n"
+         "watchdog_fast=1\n"
+         "watchdog_reduce=1\n"
+@@ -2321,6 +2322,7 @@ static void run_loader() {
+     };
+     flag_to_env("swap_pool_decommit", "BB_UWP_POOL_DECOMMIT", true);
+     flag_to_env("arena_admission", "BB_ARENA_ADMISSION", true);
++    flag_to_env("arena_admission_recover", "BB_ARENA_ADMISSION_RECOVER", true);
+     flag_to_env("texture_reclaim_experiment", "BB_GC_EXPERIMENT", false);
+     flag_to_env("resolution_diagnostics", "BB_RESOLUTION_DIAGNOSTICS", true);
+     const auto number_to_env = [&](const char* key, const char* env, long min, long max) {
+diff --git a/xbox/tests/arena_admission_policy_test.cpp b/xbox/tests/arena_admission_policy_test.cpp
+index 5d348df..47650e9 100644
+--- a/xbox/tests/arena_admission_policy_test.cpp
++++ b/xbox/tests/arena_admission_policy_test.cpp
+@@ -21,5 +21,12 @@ int main() {
+     assert(CapFits(800 * M, 0, 800 * M, 0));
+     assert(ProjectedLive(std::numeric_limits<std::uint64_t>::max(), 0, 1) ==
+            std::numeric_limits<std::uint64_t>::max());
++    // Item 2, stage 2a: the pre-allocation recovery trigger (250 MiB reserve, 16 MiB minimum).
++    assert(ShouldRecover(4900 * M, 5120 * M, 32 * M));          // 32 MiB would leave < 250 MiB
++    assert(!ShouldRecover(4700 * M, 5120 * M, 32 * M));         // fits with room to spare
++    assert(!ShouldRecover(4900 * M, 5120 * M, 8 * M));          // below kMinimum: not worth a walk
++    assert(!ShouldRecover(4900 * M, 0, 32 * M));                // unknown limit guards nothing
++    assert(ShouldRecover(5121 * M, 5120 * M, 16 * M));          // already over: recover
++    assert(!ShouldRecover(0, 0, std::numeric_limits<std::uint64_t>::max()));
+     std::puts("arena admission arithmetic: all checks passed");
+ }
+diff --git a/xbox/tests/recovery_ladder_test.cpp b/xbox/tests/recovery_ladder_test.cpp
+new file mode 100644
+index 0000000..e9a09fc
+--- /dev/null
++++ b/xbox/tests/recovery_ladder_test.cpp
+@@ -0,0 +1,91 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++// Pins the pre-allocation recovery ladder (item 2, stage 2a): rung order, the mid-draw Finish
++// skip, early exit once the need is covered, and the no-op cases. Pure header, host-buildable.
++#include "../graphics/recovery_ladder.h"
++#include <cassert>
++#include <cstdio>
++#include <string>
++#include <vector>
++
++namespace {
++std::vector<std::string> g_order;
++std::uint64_t g_budget = 0; // bytes each rung "frees" (from remaining need)
++std::uint64_t g_last_need = 0;
++
++void reset(std::uint64_t frees_per_rung = 0) {
++    g_order.clear();
++    g_budget = frees_per_rung;
++    g_last_need = 0;
++}
++std::uint64_t rung(const char* name, std::uint64_t need) {
++    g_order.push_back(name);
++    g_last_need = need;
++    return g_budget;
++}
++} // namespace
++
++int main() {
++    using namespace BbUwp;
++    constexpr std::uint64_t M = 1ull << 20;
++
++    // 1. Full order, nothing freed: every rung runs in the item-2 order, Finish included.
++    {
++        reset(0);
++        RecoveryHooks h;
++        h.finish_gpu = [](std::uint64_t n) { return rung("finish", n); };
++        h.pop_pending = [](std::uint64_t n) { return rung("pop", n); };
++        h.release_retired = [](std::uint64_t n) { return rung("retired", n); };
++        h.reclaim_images = [](std::uint64_t n) { return rung("images", n); };
++        h.pager = [](std::uint64_t n) { return rung("pager", n); };
++        const auto out = RunRecoveryLadder(h, 64 * M, false);
++        assert((g_order == std::vector<std::string>{"finish", "pop", "retired", "images", "pager"}));
++        assert(out.rungs_run == 5 && !out.met_need && !out.finish_skipped && out.freed == 0);
++    }
++    // 2. Mid-draw: Finish is skipped and flagged, the rest runs in order.
++    {
++        reset(0);
++        RecoveryHooks h;
++        h.finish_gpu = [](std::uint64_t n) { return rung("finish", n); };
++        h.pop_pending = [](std::uint64_t n) { return rung("pop", n); };
++        h.release_retired = [](std::uint64_t n) { return rung("retired", n); };
++        const auto out = RunRecoveryLadder(h, 8 * M, true);
++        assert((g_order == std::vector<std::string>{"pop", "retired"}));
++        assert(out.finish_skipped && out.rungs_run == 2 && !out.met_need);
++    }
++    // 3. Early exit: the first rung covers the need and the expensive walks never run.
++    {
++        reset(128 * M);
++        RecoveryHooks h;
++        h.finish_gpu = [](std::uint64_t n) { return rung("finish", n); };
++        h.pop_pending = [](std::uint64_t n) { return rung("pop", n); };
++        h.release_retired = [](std::uint64_t n) { return rung("retired", n); };
++        h.reclaim_images = [](std::uint64_t n) { return rung("images", n); };
++        h.pager = [](std::uint64_t n) { return rung("pager", n); };
++        const auto out = RunRecoveryLadder(h, 100 * M, true);
++        assert((g_order == std::vector<std::string>{"pop"}));
++        assert(out.met_need && out.freed == 128 * M && out.rungs_run == 1);
++    }
++    // 4. Each rung sees the STILL-SHORT amount, not the original need.
++    {
++        reset(40 * M);
++        RecoveryHooks h;
++        h.pop_pending = [](std::uint64_t n) { return rung("pop", n); };
++        h.reclaim_images = [](std::uint64_t n) { return rung("images", n); };
++        const auto out = RunRecoveryLadder(h, 100 * M, true);
++        assert(out.rungs_run == 2 && out.freed == 80 * M && !out.met_need);
++        assert(g_last_need == 60 * M); // second rung saw 100 - 40
++    }
++    // 5. need == 0 runs nothing; null hooks are skipped safely; partial coverage reports honestly.
++    {
++        reset(10 * M);
++        RecoveryHooks empty;
++        const auto no_op = RunRecoveryLadder(empty, 0, false);
++        assert(no_op.rungs_run == 0 && no_op.freed == 0);
++        RecoveryHooks only_pager;
++        only_pager.pager = [](std::uint64_t n) { return rung("pager", n); };
++        const auto partial = RunRecoveryLadder(only_pager, 100 * M, false);
++        assert(partial.rungs_run == 1 && partial.freed == 10 * M && !partial.met_need);
++    }
++    std::puts("recovery ladder: all checks passed");
++    return 0;
++}

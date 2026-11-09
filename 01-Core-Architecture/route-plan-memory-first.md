@@ -35,7 +35,7 @@ The wall must be approached with margin, not with 4 MiB to spare.
 - Fixed regression route (above) + §7 capture fields; `loader.log.txt` + `errors.log.txt`
   preserved before relaunch; **one variable per run**.
 
-### Phase 1 — Kill the spike (owner: agent, CI-verifiable)
+### Phase 1 — Kill the spike (owner: agent, CI-verifiable) — 2a DELIVERED 2026-11-07: see `../06-Boilerplates-And-Wrappers/testproject-phase1-2a/` (patch + tests, host tests PASS; Windows build = CI; not hardware-validated)
 Item 2 de-risked into two sub-stages — **the recovery ladder ships before fail-soft**:
 - **2a (safe, no caller contract needed):** enforced reclaim ladder before every
   ≥ 16 MiB DeviceLocal allocation (`Finish → PopPendingOperations → retired-arena release →
