@@ -1,5 +1,12 @@
 # Test-project Phase 1 / Stage 2a — Pre-allocation recovery ladder (item 2)
 
+> **Release status (2026-11-07):** implementation complete, host tests PASS, prepared as local
+> commit `681384b` on `arena/8ac58bdb-test-project` (base `cac48ea`) in the working clone — but
+> the push and the Git Data API route are both refused for this session's GitHub credential
+> ("Resource not accessible by integration" = app token scoped to `uwp-research-project` only).
+> **One `git push origin arena/8ac58bdb-test-project` after the GitHub connection is refreshed
+> releases it** (the `Xbox build` workflow publishes the `[release]` pre-release automatically).
+
 **What:** the safe first half of follow-up item 2 for `youdedend/Test-project` (Bloodborne Xbox
 UWP): the ordered reclaim ladder runs **before** a DeviceLocal allocation crosses the 250 MiB
 reserve floor, instead of only after one fails. It frees memory; it **never refuses** an
