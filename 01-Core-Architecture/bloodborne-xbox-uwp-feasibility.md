@@ -1,14 +1,16 @@
-# Bloodborne → Xbox UWP — Feasibility Dossier (2026-11-07)
+# Bloodborne → Xbox UWP — Feasibility Dossier (2026-11-07, amended same day)
 
-**Verdict: NO-GO on any port/remake/emulation route. GO on a streaming-client route
-(own-console remote play), which already half-exists in open source.**
+**Verdict (amended): NO-GO on running the PS4 binary (route B/C) or shipping Sony code/assets.
+Route D (native-RE port) is NOT dead — `youdedend/Test-project` runs the game on a Series S
+inside the 5,120 MiB budget and is *memory-bound in extended play*, not budget-impossible.
+Route E (streaming) remains the zero-engineering route. See the Correction box in Wall 3.**
 
-| Route | Verdict | Killing constraint (evidence) |
+| Route | Verdict | Constraint (evidence) |
 |---|---|---|
-| A. "Port" the game (any sense) | ❌ absolute | Sony/FromSoftware IP + no source; see Wall 1 |
+| A. Ship Sony code/assets (any sense) | ❌ absolute | Sony/FromSoftware IP; Wall 1 |
 | B. Translate the PS4 binary to UWP | ❌ absolute | Orbis ABI ≠ Win32; nothing to map; Wall 2 |
-| C. shadPS4 (emulation) inside UWP | ❌ hard NO | 16–32 GB RAM req vs **5,120 MiB Dev Mode cap**; Vulkan→D3D12 rewrite; Wall 3 |
-| D. Native-RE ports (bbport-class) inside UWP | ❌ hard NO | ≥6 GB free mem > 5,120 MiB cap; Vulkan 1.3; Wall 3 |
+| C. shadPS4 (full emulation) inside UWP | ❌ hard NO | 16–32 GB RAM req vs **5,120 MiB Dev Mode cap**; Vulkan→D3D12 rewrite; Wall 3 |
+| D. Native-RE ports (bbport-class) inside UWP | ⚠️ **demonstrated** | User's `youdedend/Test-project` plays on Series S (25.8 FPS Yharnam) inside 5,120 MiB via guest-page swap; extended-play memory wall remains (stalls ~5,055–5,116/5,120 MiB after 800–1,300 presents) |
 | E. **Stream from own PS4/PS5 (chiaki-class client)** | ✅ viable | Memory ≈ hundreds of MB; no JIT/Vulkan; **psxbox/XPort exist, unfinished** |
 
 ---
@@ -42,7 +44,8 @@ Consequences: (a) full-system/HLE emulation is the only way to run the binary (W
 (b) a *native* port means re-implementing the FromSoft engine from scratch — which is
 exactly what the unofficial "bbport" community did on PC after years of RE work
 (bloodbornepc.wiki, Oct 2026). That is a multi-year, multi-engineer effort producing
-Win32+Vulkan software that then still fails Wall 3's numbers.
+Win32+Vulkan software. The user's `youdedend/Test-project` then brought that engine to UWP
+— see the Correction box under Wall 3 for how far it actually got.
 
 ## Wall 3 — The budget wall (our Dev Mode memory study, the kill-shot)
 
@@ -63,11 +66,28 @@ vs. what the candidates actually demand (Oct 2026 sources, [S1][S2][S3]):
 | CPU ISA | x86-64-v3 (AVX, Haswell+) | AVX1/SSE4.2 | Series Zen2 ✅ / One Jaguar ❌ |
 | Storage | ~30–50 GB dump, multi-GB `.psarc` chunks | same dump | 2 GB/file ⇒ USB-only layout |
 
-Every row overflows by 3–6× (RAM) or is structurally unavailable (Vulkan). Even the *lean*
-native route needs 6 GB free inside a 5,120 MiB cap with no pagefile escape. shadPS4's
+Every row overflows by 3–6× (RAM) or is structurally unavailable (Vulkan). shadPS4's
 "Bloodborne" compatibility entry itself is still **"Ingame — serious issues"** [S2].
-Phase 1's tentative "shadPS4 doubtful on Series S" is upgraded by this data to **hard NO on
-all Dev Mode hardware, Series X included** — the sandbox is 5 GB everywhere.
+Phase 1's tentative "shadPS4 doubtful on Series S" is upgraded to **hard NO on all Dev Mode
+hardware for route C (full emulation)** — the sandbox is 5 GB everywhere.
+
+> **CORRECTION (2026-11-07) — route D row of this dossier was wrong, falsified by field
+> data.** The user's `youdedend/Test-project` (UWP port of `Supermedo/bloodborne_pc`) runs
+> the game **on real Series S hardware inside the 5,120 MiB cap**: Central Yharnam live 3D
+> gameplay at **25.8 FPS** (`presents=1885`, `UWP swap: out=808 in=250 disk=572`,
+> `corrupt=0`), title/menus at 29.4 FPS. Why the "≥6 GB" row misled: (a) the PC figure
+> includes pagefile slack, (b) bbport-class is **native x86-64 + HLE**, not full emulation —
+> there is no 8 GB guest RAM to host, only pages the game touches, and (c) the port pages
+> cold guest pages to a compressed LocalState swap file (Test 27: **1,439 MiB of guest pages
+> in a 713 MiB file**). The real constraint is an **extended-play memory wall**: runs stall
+> at **5,055–5,116/5,120 MiB** after 800–1,300 presents (Tests 15–29: `vmaCreateBuffer -2`,
+> swap-disk ceilings, `VK_ERROR_DEVICE_LOST` at ~4,989 MiB). Remaining engineering gap =
+> enforced allocation admission + arena cap (observation-only today) + swap-volume limits.
+> Evidence: `youdedend/Test-project` `docs/hardware-test-11…29/`, `handoff.md`,
+> `PROJECT_COMPLETE_HISTORY.md` @ `arena/8ac58bdb-test-project`. Field notes in
+> `../03-Memory-CPU-And-JIT/testproject-field-notes.md`. Vulkan-on-UWP was solved by
+> packaging Mesa Dozen (`vulkan_dzn.dll`) — the "no Vulkan" row needed a translation layer,
+> not a rewrite.
 
 ## The GO route — stream it (route E)
 
