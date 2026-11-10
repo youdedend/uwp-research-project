@@ -48,9 +48,11 @@ UNHANDLED FAULT CONTEXT: addr is in a private allocation, protect=0x0 state=0x20
   use-after-free (which would read `MEM_FREE`, `type=0`) — it is a **read/write to a page inside a
   reservation that was never committed**, i.e. a guest-memory address whose page was not backed at
   that moment.
-- `addr` and `rsp` have the same high bits (`0x23fb…` vs `0xcd2d…`? no — but both are large
-  non-canonical-looking values; `rsp` is a guest stack, `addr` is a guest heap address). The address
-  is in guest space, and the faulting thread was **`recording Vulkan command`** (1,057 ms in that op).
+- `addr=0x23fb16ed5bc` is in the guest address range (the log's other guest pointers are
+  `0x10…`/`0x1…`; this one is just outside every guest image the emulator maps), and `VirtualQuery`
+  says the page is inside a reservation we own. The faulting thread was **`recording Vulkan
+  command`** (1,057 ms in that op), with `tid 4108` behind it in *'processing a PM4 submission'* for
+  2,731 ms.
 - Crash history, now readable at a glance:
 
   | build | fault | `addr` |
