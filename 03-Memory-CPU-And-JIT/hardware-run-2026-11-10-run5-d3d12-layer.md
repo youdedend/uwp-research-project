@@ -276,3 +276,45 @@ A/B, not the next build.
   suffix is not the run number.
 - Whether `dzn_debug=d3d12` was still in the environment on the *second* launch after the migration
   (the ini says it persists; the log would say).
+
+## 10. diag-5 was written and could not be pushed
+
+Two diagnostics were built on top of `fa07c63` (`Test-project`), committed as `c5a784c` on a local
+branch `arena/diag5`, and packaged as a kit:
+
+- **Drive `bb-port-diag5-kit.zip` = `1uzSrPMf1c4YouIofjRReO66G-VbxxN5m`** (12,465 B) containing
+  `bb-port-diag5.bundle` (base `fa07c63…`), `diag5.patch` (applies cleanly with `git apply --check`),
+  and `release-notes-diag5.md`. The bundle was verified by fetching it into a fresh clone (`c5a784c`
+  appears, 3 files, +156/−9).
+
+**Why a kit and not a build:** `git push` to `youdedend/Test-project` returns
+`403 Permission to youdedend/Test-project.git denied to youdedend`, and the API agrees — `gh api
+repos/… --jq .permissions` reports `admin:true, push:true` for the *user*, but every write through
+this session's token (push, `POST /git/refs`, `PUT /contents`) answers
+`Resource not accessible by integration`. The token is installation-scoped: read-only on that repo,
+read-write on `uwp-research-project`. So the build cannot be started from here; applying the kit is a
+one-command step for a session with write access.
+
+What diag-5 contains, and why only that:
+
+1. `ModuleNameForAddress` now falls back to the started image when
+   `K32EnumProcessModules`/`K32GetModuleInformation` are not published, and both fault lines print
+   `base=0x…` next to `module=+0x…`. Two runs were lost to `module=unknown`; this removes the
+   possibility.
+2. `NextPacket`'s overrun path (the one new emulator-side line in run 5's log) now prints the dwords
+   it actually received. Verified on the host against six cases (valid, short, full, empty, 2-dword,
+   1-dword) — the leftover half-packet is exactly what appears in `last [ … ]`.
+
+**Deliberately not included:** the buffer-barrier fix from §4/§8.3. It was written and then reverted.
+Reason one: `flushBarriers` lives in `vk_runtime.cpp`, which needs `vulkan.hpp` and boost — neither is
+available in this sandbox, so the change could not be compiled even once, and diag-3 already taught
+what an unverified renderer edit costs. Reason two (more important): a buffer barrier becomes
+`Offset = 0, Size = UINT64_MAX` in dzn, so on a 16 MiB–900 MiB dense arena a "buffer transition"
+transitions the *whole* arena — it can make the debug layer louder, not quieter — and validating that
+needs the debug layer on, which would confound the present-count measurement that is the whole point
+of the next run.
+
+The diag-5 run's primary job is therefore narrow: **measure what the migration build actually does**
+(run 5's crash point was never captured), and if it faults, name the module and offset. If no fault
+appears, the next build is the barrier experiment with `BB_BUFFER_BARRIERS=1`, designed against the
+capability question in §4.1.
