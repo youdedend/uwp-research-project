@@ -49,7 +49,7 @@ Host tests pass **5/5** (`dense_arena`, `arena_admission_policy`, `recovery_ladd
 
 ## Steps (everything on YOUR branch)
 
-1. Get the kit: Google Drive file **`1wEd3wB2q4tGvXNAoJcnZHYbdRJT0x4dL`**
+1. Get the kit: Google Drive file **`1w2Dx4mUQtZn1FyqZW1DOe0JcyVLZETuw`**
    (`bb-port-diag2-kit.zip`; google_drive `download_file` streams it to the workspace) →
    unzip → `bb-port-diag2.bundle` + `release-notes-diag2.md`.
 2. In your Test-project checkout (your session branch name in the two places marked):
