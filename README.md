@@ -10,7 +10,7 @@ committed files back it (per the 2026-11-07 audit rules).
 |---|---|---|
 | `01-Core-Architecture/` | 🟡 in progress | `packaging-and-deployment.md` (appx/Device Portal case study), `bloodborne-xbox-uwp-feasibility.md` (feasibility dossier, amended w/ Test-project field data) |
 | `02-Graphics-And-Shaders/` | ⬜ pending | — |
-| `03-Memory-CPU-And-JIT/` | 🟡 in progress | `dev-mode-memory-and-system-caps.md` (1/5/128 MB caps, App-vs-Game), `testproject-field-notes.md` (Series S field evidence) |
+| `03-Memory-CPU-And-JIT/` | 🟡 in progress | `dev-mode-memory-and-system-caps.md` (1/5/128 MB caps, App-vs-Game), `testproject-field-notes.md` (Series S field evidence), `xbox-swap-study.md` (fmalloc verdict) |
 | `04-Filesystem-Mods-And-Caches/` | ⬜ pending | — |
 | `05-Input-And-Audio/` | 🟡 in progress | `input-stack-gameinput-vs-wgi.md`, `audio-notes.md` |
 | `06-Boilerplates-And-Wrappers/` | 🟡 in progress | `testproject-phase1-2a/` (item-2 recovery ladder patch + tests for Test-project) |
