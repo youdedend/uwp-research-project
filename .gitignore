@@ -1,0 +1,3 @@
+*.pyc
+__pycache__/
+03-Memory-CPU-And-JIT/vulkan_dzn.dll
