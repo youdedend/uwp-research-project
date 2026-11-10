@@ -113,11 +113,13 @@ is at https://github.com/youdedend/Test-project/releases/tag/xbox-alpha-1.0.2631
 
 Short version: the gameplay run played 1,225 presents on `cache=cold` with **zero historical
 fault RVAs, zero DEVICE_LOST, `corrupt=0`** — the watchdog + recovery ladder held the burst at
-4,822/5,120 MiB in production for the first time (reclaim 78 MiB + pager 32 MiB + degrade). But
-the 800–1,300-present stall class is still present as a **GPU fence wedge** (41 s frozen), a
-warm-boot `GameSerial` assertion (`elf_info.h:107`) stops runs 3–4 before any present, and the
-staging-chunk telemetry needed to actually measure the o1heap arena **is not logged** (plan
-questions 1–2 = unknown). Full evidence, pins, and next steps in the linked doc + its
+4,822/5,120 MiB in production for the first time (reclaim 78 MiB + pager 32 MiB + degrade). The
+character-load freeze is **root-caused**: `0xC0000005` NULL-object read (`addr=0x150`) inside
+`vulkan_dzn.dll+0x1fd79` while recording commands (377 chunks queued) — the dzn pin already
+contains the Oct copy/barrier fixes; prime suspect is our copy-layer-mismatch skip path
+(`vk_runtime.cpp:103`) interacting with dzn. Also open: warm-boot `GameSerial` stop, and the
+staging-chunk telemetry needed to measure the o1heap arena **is not logged** (plan questions
+1–2 = unknown). Full evidence, pins, and next steps in the linked doc + its
 `hardware-run-2026-11-10-26314-logs/` folder.
 
 ## 4. Verdict & what to steal
