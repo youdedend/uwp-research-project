@@ -1,86 +1,89 @@
-# NEW-CHAT RUNBOOK — push prepared commit `d31be49` to `youdedend/Test-project` and publish
+# NEW-CHAT RUNBOOK v2 — publish prepared chain via YOUR OWN session branch
 
-**For: the agent in a fresh Arena chat that has GitHub write access to `youdedend/Test-project`
-(and ideally `youdedend/uwp-research-project`) plus the google_drive connector.**
-**Written: 2026-11-10 by the previous agent, whose session credential was READ-ONLY on
-Test-project and could not push. The user asked for this to be finished via GitHub Actions.**
+**For: the Arena agent whose session branch is `arena/c40c18ec-test-project` on
+`youdedend/Test-project`. Written 2026-11-10 by the previous agent (read-only on Test-project).
+v2 because v1 told you to push `arena/8ac58bdb-test-project` — impossible for you: Arena pins
+each session to its own branch. GOOD NEWS: nothing in the pipeline actually needs that branch.**
 
-## What is prepared and why
+## User authorization (in the user's words, carried in the request)
 
-`youdedend/Test-project` branch `arena/8ac58bdb-test-project` on origin is at `cac48ea`.
-Two prepared commits fast-forward on top of it (in order):
+> Pushing to **your own session branch** `arena/c40c18ec-test-project` is **authorized** — the
+> standing rule "push ONLY to `arena/8ac58bdb-test-project`" is amended to allow session
+> branches. **NEVER** push or merge to `main`. **No PRs.** Publish pre-releases without asking.
 
-- `681384b` — "[release] item 2 stage 2a: pre-allocation recovery ladder and pre-merge reclaim"
-- `d31be49` — "bbport item 2 step 1 (xbox-swap study): o1heap arena behind the staging pool"
+## Two facts from `.github/workflows/xbox.yml` that make this work
 
-They are shipped as a **git bundle** `phase1-2a-step1.bundle` inside the zip
-`bb-port-phase1-2a-step1-kit.zip`. Get the zip from ONE of these two sources:
+1. `on: push: branches: ['arena/**', 'main']` (xbox.yml:13-16) — **any arena branch push runs
+   `Xbox build`** (builds the appx, runs the `xbox/tests` host-test table incl. `staging_arena`).
+2. The `Publish pre-release` step (xbox.yml:278) fires only when
+   `(workflow_dispatch && inputs.release) || contains(github.event.head_commit.message, '[release]')`.
+   The prepared tip `d31be49` does **not** contain `[release]`, so you must add **one marker
+   commit on top** whose message starts with `[release]`. That is the "run it on GitHub Actions"
+   button the user asked for.
 
-1. **Google Drive** (preferred if the connector is on): file id `1K_KlMhzibGEzonHw1HtGN3bmyopfW3yE`
-   (https://drive.google.com/file/d/1K_KlMhzibGEzonHw1HtGN3bmyopfW3yE/view). Download with the
-   google_drive `download_file` tool (it returns base64 for binary — decode to disk), unzip,
-   and use `phase1-2a-step1.bundle`.
-2. **Research repo** (if this chat can also read `youdedend/uwp-research-project`):
-   `06-Boilerplates-And-Wrappers/testproject-phase1-2a/phase1-2a-step1.bundle`.
+## Steps (everything on YOUR branch; `arena/8ac58bdb-test-project` is READ-ONLY for you)
 
-The zip also contains `release-notes-step1.md` (what the code does + hardware measurement plan)
-and `release-2a-step1.ps1` (the user-machine fallback script).
+1. Get the kit: Google Drive file `1K_KlMhzibGEzonHw1HtGN3bmyopfW3yE`
+   (`bb-port-phase1-2a-step1-kit.zip`, google_drive `download_file` returns base64 — decode to
+   disk and unzip) → `phase1-2a-step1.bundle` + `release-notes-step1.md`. (Alt source if this
+   chat can read `youdedend/uwp-research-project`: `06-Boilerplates-And-Wrappers/
+   testproject-phase1-2a/`.)
+2. In the Test-project checkout:
 
-## Exact commands (bash)
+   ```bash
+   git fetch origin arena/8ac58bdb-test-project          # READ ONLY — never push to it
+   git fetch /path/to/phase1-2a-step1.bundle \
+       'refs/heads/arena/8ac58bdb-test-project:refs/bb/step1'
+   git checkout -B arena/c40c18ec-test-project refs/bb/step1
+   # now your branch tip = d31be49 (chain cac48ea -> 681384b -> d31be49; includes all of main)
+   cp /path/from-kit/release-notes-step1.md .
+   git add release-notes-step1.md
+   git commit -m '[release] item 2 step 1: o1heap arena behind the staging pool (release notes)'
+   git push origin arena/c40c18ec-test-project            # YOUR session branch
+   ```
 
-```bash
-git clone https://github.com/youdedend/Test-project.git /tmp/Test-project
-cd /tmp/Test-project
-git fetch origin arena/8ac58bdb-test-project
-git checkout -B arena/8ac58bdb-test-project origin/arena/8ac58bdb-test-project
-git fetch /path/to/phase1-2a-step1.bundle 'refs/heads/arena/8ac58bdb-test-project:refs/bb/step1'
-git merge --ff-only refs/bb/step1        # fast-forwards the branch to d31be49
-git push origin arena/8ac58bdb-test-project   # THIS push is the "run on GitHub Actions" button
-```
+   If the push is rejected non-fast-forward (remote already has an unrelated empty tip), the
+   chain contains all of `main` (verified: main is 0 behind / 80 ahead-base), so nothing is lost
+   by `git push --force-with-lease origin arena/c40c18ec-test-project`.
+3. Watch and deliver:
 
-The push triggers the **`Xbox build`** workflow automatically (it builds, runs the `xbox/tests`
-host-test table including the new `staging_arena` row, and auto-publishes a `[release]`
-pre-release named `xbox-alpha-1.0.<YYDDD>.<HHMM>`). Then:
+   ```bash
+   gh run watch "$(gh run list -R youdedend/Test-project --branch arena/c40c18ec-test-project \
+       --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
+   gh release list -R youdedend/Test-project --limit 2
+   ```
 
-```bash
-gh run watch "$(gh run list -R youdedend/Test-project --branch arena/8ac58bdb-test-project --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
-gh release list -R youdedend/Test-project --limit 2
-```
+   The `[release]` marker commit makes `Xbox build` auto-publish `xbox-alpha-1.0.<YYDDD>.<HHMM>`
+   (xbox.yml:277-310). Hand the user that pre-release's download link.
+4. **Fallback** (only if no pre-release appeared although CI was green):
+   `gh workflow run 'Xbox build' --ref arena/c40c18ec-test-project -f release=true` — the
+   workflow_dispatch publish gate (xbox.yml:278) then fires. This re-runs the full build.
 
-Report to the user: the workflow run URL, the new pre-release tag + download link, and the
-host-test results. That pre-release link is the deliverable.
+## What the code is (one paragraph)
 
-## Standing rules for Test-project (user-authored, `PROJECT_COMPLETE_HISTORY.md` §2)
+Item 2 step 1 of the memory-stabilization route: the staging pool's large/deferred path
+(`gpu/shadps4/video_core/renderer_vulkan/vk_staging_buffer_pool.cpp:170`) sub-allocates from
+vendored o1heap arenas (host memory types only) so freed regions serve later requests of any
+size once their GPU tick is safe. Misses fall through to the legacy path; `staging_arena=0`
+restores it exactly. Host tests PASS (8 groups). Full context:
+`03-Memory-CPU-And-JIT/xbox-swap-study.md` §3b and `release-notes-step1.md` in the kit.
 
-- Commit/push **ONLY** to `arena/8ac58bdb-test-project`. **NEVER** push or merge to `main`.
-  **No pull request without explicit authorization.** Publishing pre-releases needs no asking
-  (the workflow does it).
-- Report changes with file+line refs. Run/observe `xbox/tests`. **≤5 failed CI attempts**; if CI
-  fails in files unrelated to the change, report and stop.
-- Never print tokens/secrets. Don't modify `third_party/`, don't change the `slot_vector.h`
-  assertion, don't weaken assertions.
-- After a crash/stall on hardware, request only `loader.log.txt` + `errors.log.txt` BEFORE relaunch.
+## Standing rules (user-authored, `PROJECT_COMPLETE_HISTORY.md` §2)
+
+- Push only to session branches the user authorizes (see box above). **Never `main`. No PRs.**
+- Report changes with file+line refs. **≤5 failed CI attempts**; if CI fails in unrelated files,
+  report and stop. Never print tokens/secrets. Don't modify `third_party/`, don't change the
+  `slot_vector.h` assertion, don't weaken assertions.
+- After a hardware crash/stall request only `loader.log.txt` + `errors.log.txt` BEFORE relaunch.
 
 ## Contingency
 
-- **`git push` fails 403** ("Permission ... denied to youdedend"): this chat's GitHub connection
-  is still read-only for Test-project. Tell the user the GitHub connection needs access to
-  `youdedend/Test-project`, or fall back to walking them through `release-2a-step1.ps1` in
-  PowerShell on any machine with `git` + `gh` signed in (it does the same steps automatically).
-- **CI fails**: capture the failing step's log lines and report; do not blindly re-run more than
-  5 times. The new code touched: `xbox/graphics/staging_arena.h` (new), `xbox/graphics/o1heap/`
-  (vendored MIT), `gpu/shadps4/video_core/renderer_vulkan/vk_staging_buffer_pool.{h,cpp}`,
-  `gpu/CMakeLists.txt`, `xbox/platform/main.cpp`, `xbox/tests/staging_arena_test.cpp` (new),
-  `.github/workflows/xbox.yml` (one test row).
-- **Bundle refuses to fetch** ("does not contain the prerequisite"): the clone is not at
-  `cac48ea`; fetch the branch first (the commands above do).
-
-## What the code does (one paragraph)
-
-Item 2 step 1 of the memory-stabilization route: the staging pool's large/deferred path
-(`vk_staging_buffer_pool.cpp:170`) sub-allocates from o1heap arenas (host memory types only)
-so freed regions serve later requests of any size once their GPU tick is safe
-(`scheduler.IsFree`, never before). Any miss falls through to the legacy dedicated path;
-`staging_arena=0` in bbport.ini restores the old behavior exactly. Host tests PASS (8 groups).
-Hardware effect is unmeasured until the user runs the regression route on their Xbox — the
-measurement plan is in `release-notes-step1.md`.
+- Push 403 "Permission denied to youdedend": your GitHub connection lacks write on Test-project —
+  tell the user to reconnect it with that repo; do NOT try to work around it.
+- CI failure: capture the failing step's log lines; the step-1 change touched
+  `xbox/graphics/staging_arena.h` (new), `xbox/graphics/o1heap/` (vendored MIT),
+  `gpu/shadps4/video_core/renderer_vulkan/vk_staging_buffer_pool.{h,cpp}`, `gpu/CMakeLists.txt`,
+  `xbox/platform/main.cpp`, `xbox/tests/staging_arena_test.cpp` (new), `.github/workflows/xbox.yml`
+  (one test row).
+- History hygiene (NOT required for publishing): a later user-authorized PR can fold session
+  branches back into `arena/8ac58bdb-test-project`. Do not do it unasked.
