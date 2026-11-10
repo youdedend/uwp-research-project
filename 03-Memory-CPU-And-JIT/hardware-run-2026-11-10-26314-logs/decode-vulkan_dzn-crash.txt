@@ -1,0 +1,59 @@
+DECODE OF vulkan_dzn.dll+0x1fd79 (2026-11-10 hardware crash)
+============================================================
+Source: CI artifact `dozen-uwp` (run 42837339701, SHA 9849cafba2de567f747fa2de718238544dc3f6db),
+uploaded by the user to Google Drive as dozen-uwp.zip (1,691,571 B; id 1iOWJp-gBInj6Y2TB0vNZU4yBUGAzrSKZ).
+Binary: vulkan_dzn.dll (11,169,280 B), built from Cosmo/mesa_ai_slop_version@a76cd3caa23f,
+MSVC 14.44, buildtype=release (no PDB/MAP shipped). ImageBase 0x180000000.
+Tool: 03-Memory-CPU-And-JIT/decode_dzn_crash.py (pefile 2024.8.26 + capstone 5.0.7).
+
+Crash line (hardware-run-2026-11-10-26314-logs/loader-2026_11_10-2.log.txt:2003):
+  UNHANDLED NATIVE FAULT: code=0xc0000005 module=vulkan_dzn.dll+0x1fd79
+  rip=0x7ffbf210fd79 rsp=0xb301ff2a0 addr=0x150
+
+FAULTING INSTRUCTION (verified disassembly):
+  >>> 0x1fd79: mov rcx, qword ptr [rax + 0x70]
+  with, immediately before (function prologue at 0x1fd60):
+      0x1fd6a: mov rax, qword ptr [rdx + 0x10]
+      0x1fd6e: mov rsi, rcx              ; hidden struct-return slot
+      0x1fd73: mov ebp, r9d              ; 3rd arg = aspect
+      0x1fd76: mov r14, rdx              ; 2nd arg = image
+  Exception address 0x150 = 0xE0 + 0x70 => rax held 0xE0 (224).
+
+IDENTIFIED SOURCE (struct layout matched field-for-field; pin a76cd3caa23f):
+  Function : dzn_image_get_copy_loc()  (src/microsoft/vulkan/dzn_image.c,
+             the builder at dzn_image.c:438-444 that fills
+             loc.PlacedFootprint.{Offset,Footprint.{Format,Width,Height,Depth,RowPitch}} -
+             disassembly 0x1fd84..0x1ff3f matches each store; returns
+             D3D12_TEXTURE_COPY_LOCATION by value = hidden rcx out-slot;
+             signature (image, VkImageSubresource*, aspect, layer) matches the
+             call sites dzn_cmd_buffer.c:2611-2612:
+               dst_loc = dzn_image_get_copy_loc(dst, dst_subres, aspect, dst_l);
+               src_loc = dzn_image_get_copy_loc(src, src_subres, aspect, src_l);
+             inside dzn_cmd_buffer_copy_img_chunk() (dzn_cmd_buffer.c:2555,
+             VkCopyImageInfo2 image-to-image copy chunks).
+  arg rdx = const struct dzn_image *   (offset map proved it:
+      +0x10 base.device pointer | +0x4c vk.format | +0x54 extent.height
+      | +0x58 extent.depth | +0x98 linear.row_stride | +0xa0 desc.Dimension
+      | +0xd8 res (ID3D12Resource*) - all match the disassembly reads).
+  The faulting read = image->vk.base.device->physical:
+      vk_object.h:56  struct vk_device *device;   (in vk_object_base, at +0x10)
+      vk_device.h:116 struct vk_physical_device *physical;  (vk_device +0x70;
+      base 0x40 + VkAllocationCallbacks 0x30 = 0x70).
+
+MECHANISM (proven by disassembly + logs):
+  A dzn_image whose vk.base.device == 0xE0 (garbage, not a pointer) reached the
+  copy-descriptor builder during the character-load texture storm. First use of
+  device (device->physical) read address 0x150 -> 0xC0000005 -> renderer thread
+  died mid-recording (loader-2 log :1975, 377 chunks queued) -> fence 2455/2454
+  wedged -> presents frozen at 1,225.
+  Corroboration in the same log: 5x `copy layer mismatch` D16Unorm 1x1x1
+  layers N->N+1 and texture frees id=94-98 at guest 0x10d1d50000 = image
+  records being torn down/re-mapped in the same window. A stale/freed/reused
+  image object is the only way device==0xE0.
+
+NOT PROVEN (honest gaps):
+  * Whether our copy-layer-mismatch SKIP (vk_runtime.cpp:103 LogCopyMismatch)
+    CAUSES the stale record, or the game's own free/re-map timing does.
+  * What byte pattern 0xE0 is (freed-memory residue vs field-as-pointer).
+  Next evidence: DZN_DEBUG=d3d12 repro run (fork cc9399e) + diag-1 wedge tags
+  + hardening of the mismatch-skip path (diag-1 scope, hardware-run doc).
