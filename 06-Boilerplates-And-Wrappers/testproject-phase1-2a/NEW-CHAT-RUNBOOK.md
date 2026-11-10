@@ -1,10 +1,9 @@
-# NEW-CHAT RUNBOOK v4 — publish **diag-2** (the crash fix) via YOUR OWN session branch
+# NEW-CHAT RUNBOOK v5 — publish **diag-3** (reclaim fix + diagnostics) via YOUR OWN session branch
 
 **For: any Arena agent the user sends to publish on `youdedend/Test-project`. Written 2026-11-10 by
-the research session (read-only on Test-project). v4 supersedes v3, which published diag-1 as
-`xbox-alpha-1.0.26314.1903`; v3 superseded v2 (which published step 1 as
-`xbox-alpha-1.0.26314.1455`). The change: the prepared tip is now `8cb181c` (diag-2) on top of
-`f531b31` (the published diag-1 tip). Your session branch may have ANY
+the research session (read-only on Test-project). v5 supersedes v4 (diag-2 alone; published as `xbox-alpha-1.0.26314.1946`), which superseded v3 (diag-1, `xbox-alpha-1.0.26314.1903`); v3 superseded v2 (which published step 1 as
+`xbox-alpha-1.0.26314.1455`). The change: the prepared tip is now `e2de023` (diag-3, which contains diag-2 `8cb181c`) on top of
+`f531b31`. Your session branch may have ANY
 `arena/<id>-test-project` name — the publish trick is unchanged.**
 
 ## User authorization (in the user's words, carried in the request)
@@ -23,45 +22,41 @@ the research session (read-only on Test-project). v4 supersedes v3, which publis
    top** whose message starts with `[release]`. That is the "run it on GitHub Actions" button.
    **Do not re-publish `f531b31`** — that tip is already `xbox-alpha-1.0.26314.1903`.
 
-## What diag-2 is (do not re-review it deeply; it is pre-tested)
+## What diag-3 is (do not re-review it deeply; it is pre-tested)
 
-Commit `8cb181c` "diag-2: the watchdog no longer frees texture-cache images off the render thread"
-— +263/−10 over 10 files. This is the **crash fix**, not just telemetry:
+`e2de023` on top of `f531b31`. It contains **diag-2** (`8cb181c`, the crash fix) and **diag-3**
+(the diagnostics). Published together so the user runs one build, not two.
 
-- Recovery step 1 has called `TextureCache::EmergencyReclaim` from the watchdog's own worker thread
-  since `26302.0802` (`abb3d5c`); no build up to `26301.1156` did. Step 1 runs in the detached
-  worker at `xbox/platform/main.cpp:2941`, never on the render thread. `EmergencyReclaim` takes the
-  cache's `mutex`, but `GetImage` (`texture_cache.h:323`), the binding walks and copy recording all
-  read `slot_images` unlocked — so an image could be erased while the copy builder was using it.
-  Both 26314 runs died on exactly that: `vulkan_dzn.dll+0x1fd79`
-  (`dzn_image_get_copy_loc`, stale `dzn_image`, device = 0xE0/0xD8, addr = 0x150/0x148).
-- The fix: step 1 **asks** (`RequestEmergencyReclaim`, new header-only policy in
-  `renderer_vulkan/texture_cache_reclaim_request.h`) and `Rasterizer::OnSubmit()` **performs** it
-  (`RunPendingReclaim`) at a frame boundary — the same rule the staging pool already follows with
-  `RequestIdleTrim`.
-- Also: diag-1's `staging:` row now counts the ring blocks (it printed 0 MiB through a 2.4 GiB
-  level load), and the native-fault filter now dumps the wedge tags, so a fault names the
-  operation the faulting thread was in.
+- **diag-2 — the fix.** Recovery step 1 called `TextureCache::EmergencyReclaim` from the watchdog's
+  worker thread since `26302.0802`, while the render thread was recording copies against the same
+  images (the renderer's index paths read `slot_images` unlocked). That is the stale `dzn_image`
+  behind `vulkan_dzn.dll+0x1fd79`. Step 1 now asks (`RequestEmergencyReclaim`) and
+  `Rasterizer::OnSubmit` performs it (`RunPendingReclaim`). **It worked:** in `1.0.26314.1946` that
+  fault is gone and the reclaim line appears (`render-thread reclaim ... freed 76 MiB`).
+- **diag-3 — the diagnostics** for what came next (a fence stall at 2,326 presents, then a fault
+  whose line read `module=unknown+0x23ec55`): the fault line now names any module, a
+  `UNHANDLED FAULT CONTEXT` line says what the fault address points into, the full thread report is
+  taken at the fault, the stall dump names the command index and the draw being recorded, and a
+  fence stuck for more than 3 s dumps on its own.
 
-Host tests pass **5/5** (`dense_arena`, `arena_admission_policy`, `recovery_ladder`,
-`staging_arena`, and the new `texture_cache_reclaim_request`). Details:
-`release-notes-diag2.md` in the kit.
+Host tests: **5/5 PASS** (`dense_arena`, `arena_admission_policy`, `recovery_ladder`,
+`staging_arena`, `texture_cache_reclaim_request`). Full detail: `release-notes-diag3.md`.
 
 ## Steps (everything on YOUR branch)
 
-1. Get the kit: Google Drive file **`1w2Dx4mUQtZn1FyqZW1DOe0JcyVLZETuw`**
-   (`bb-port-diag2-kit.zip`; google_drive `download_file` streams it to the workspace) →
-   unzip → `bb-port-diag2.bundle` + `release-notes-diag2.md`.
+1. Get the kit: Google Drive file **`1abZb-CmUassUarMFc9frGL8TVYTa4tGK`**
+   (`bb-port-diag3-kit.zip`; google_drive `download_file` streams it to the workspace) →
+   unzip → `bb-port-diag3.bundle` + `release-notes-diag3.md`.
 2. In your Test-project checkout (your session branch name in the two places marked):
 
    ```bash
    git fetch origin arena/c40c18ec-test-project   # objects + base f531b31 (READ-ONLY: never push)
-   git fetch /path/to/bb-port-diag2.bundle \
-       'refs/heads/arena/c40c18ec-test-project:refs/bb/diag2'
-   git checkout -B arena/<your-id>-test-project refs/bb/diag2   # tip = 8cb181c over f531b31
-   cp /path/from-kit/release-notes-diag2.md .
-   git add release-notes-diag2.md
-   git commit -m '[release] diag-2: watchdog image reclaim moves to the render thread (release notes)'
+   git fetch /path/to/bb-port-diag3.bundle \
+       'refs/heads/arena/c40c18ec-test-project:refs/bb/diag3'
+   git checkout -B arena/<your-id>-test-project refs/bb/diag3   # tip = e2de023 over f531b31
+   cp /path/from-kit/release-notes-diag3.md .
+   git add release-notes-diag3.md
+   git commit -m '[release] diag-3: name the crashing module and the hanging draw (release notes)'
    git push origin arena/<your-id>-test-project   # YOUR session branch
    ```
 
@@ -84,11 +79,11 @@ Host tests pass **5/5** (`dense_arena`, `arena_admission_policy`, `recovery_ladd
 
 ## After publishing
 
-Tell the user: the watchdog no longer frees images off the render thread (the crash fix), the
-staging row now counts ring blocks, and fault reports name the operation. Then the next hardware
-run should cover the **character-creation → world-load** transition again — that is where both
-26314 builds died. Success looks like: **no** `UNHANDLED NATIVE FAULT ... vulkan_dzn.dll+0x1fd79`
-and a `Texture cache: render-thread reclaim of the watchdog's request ...` line. Ask for
-`loader.log.txt` + `errors.log.txt` only. Remind them of the optional `DZN_DEBUG=d3d12` line in
+Tell the user: the reclaim fix is in (it removed the `vulkan_dzn.dll+0x1fd79` crash in the diag-2
+run) and the crash/stall reports now name what they see. Then ask for a run over the
+**character-creation → world-load** transition, which is where every build so far has stopped.
+Ask for `loader.log.txt` + `errors.log.txt` only. Optional second run, only if they are willing:
+the same route with `swap_file=off` in `bbport.ini`, which decides in one run whether the pager is
+involved in the new fault. Remind them of the optional `DZN_DEBUG=d3d12` line in
 `graphics-debug.txt`; never change `bbport.ini` from this session to A/B something — run defaults
 first so the fix is measured on its own.
