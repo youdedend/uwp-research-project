@@ -79,6 +79,36 @@ MiB, dedicated-vs-arena buffer counts, fault RVAs, T21 burst). Honest bounds: no
 admission enforcement (2b), no compaction; the power-of-two span rule caps the win and must be
 reported against measured chunk bytes.
 
+### CI + release outcome (verified 2026-11-10)
+
+Published **`xbox-alpha-1.0.26314.1455`** (pre-release, 2026-11-10T14:56:05Z, target
+`9849cafba2de567f747fa2de718238544dc3f6db`) from `arena/c40c18ec-test-project` —
+run [42837339701](https://github.com/youdedend/Test-project/actions/runs/42837339701) `success`
+on attempt 4. Verified here via `gh api compare d31be49...9849caf` = exactly 4 commits:
+`c5b15d0` (`[release]` marker + `release-notes-step1.md`), then three CI fixes — all four commit
+messages carry `[release]` so the publish gate (xbox.yml:278) held at the tip:
+
+1. **`5bce194` — the prepared 2a code's own bug** (`buffer.cpp:279-309`): my pre-alloc recovery
+   block sat *after* the `#endif` of the `BB_UWP` guard yet referenced `limit` declared inside it
+   → MSVC `use of undeclared identifier 'limit'` at :294/:306. Fix moved the `#endif` below the
+   block and declared `const uint64_t limit = bb_uwp_app_memory_limit();` locally. Lesson pinned:
+   **"host tests PASS" does not compile production .cpp** — the pure-header tests never built
+   `buffer.cpp`; one CI pass is the real compile gate for integrated code.
+2. **`7589edf` — MSVC has no `std::aligned_alloc`** (`staging_arena_test.cpp:35,48`): my Linux
+   g++ run passed (glibc provides it); MSVC only offers aligned `new`/`_aligned_malloc`. Test
+   now uses aligned `new`/`delete`; checks unchanged.
+3. **`9849caf` — upstream o1heap CLZ width bug on Win64** (`o1heap.c:72-79`): upstream defines
+   `O1HEAP_CLZ __builtin_clzl`; on LLP64 Windows `unsigned long` is 32-bit while `size_t` is
+   64-bit, so the count was garbage → allocator log2 math corrupt → `Assertion failed:
+   frag != ((void*)0), o1heap.c:416`. Linux host tests could not see it (LP64: `long==size_t`).
+   Fix selects the intrinsic by width, assertion left intact:
+   `#if SIZE_MAX == ULONG_MAX → __builtin_clzl / #elif SIZE_MAX == ULLONG_MAX → __builtin_clzll`.
+   Anyone vendoring o1heap on Win64 needs this; worth suggesting upstream (not done — out of
+   scope, do not act unasked).
+
+Hardware validation remains outstanding (plan in `release-notes-step1.md`); the pre-release ZIP
+is at https://github.com/youdedend/Test-project/releases/tag/xbox-alpha-1.0.26314.1455.
+
 ## 4. Verdict & what to steal
 
 **Do not link `fmalloc`** (defects 1–6 make it unsafe in its current form; GPL-3.0 also forces

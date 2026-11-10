@@ -6,6 +6,12 @@
 > PowerShell paste, same mechanics) and read `release-notes-step1.md` (hardware measurement
 > plan + `staging_arena=0` rollback). `bb-port-phase1-2a-step1-kit.zip` bundles them for a
 > USB stick. The 2a-only files below remain valid if you want the ladder alone.
+>
+> **✅ PUBLISHED (2026-11-10):** [`xbox-alpha-1.0.26314.1455`](https://github.com/youdedend/Test-project/releases/tag/xbox-alpha-1.0.26314.1455)
+> = `9849caf` (prepared `d31be49` + release notes + 3 CI fixes: buffer.cpp scope/guard at
+> `:279-309`, portable aligned alloc in the test, o1heap CLZ width for Win64) — CI
+> [run 42837339701](https://github.com/youdedend/Test-project/actions/runs/42837339701) green.
+> Hardware validation outstanding → `release-notes-step1.md`.
 
 > **Release status (2026-11-07):** implementation complete, host tests PASS, prepared as local
 > commit `681384b` on `arena/8ac58bdb-test-project` (base `cac48ea`) in the working clone — but
