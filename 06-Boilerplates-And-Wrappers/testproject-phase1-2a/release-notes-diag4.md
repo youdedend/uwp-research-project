@@ -32,6 +32,27 @@ and unusable.
 No rendering, memory or reclaim behaviour changes: only which environment variables the process
 starts with.
 
+## Correction after seeing the user's bbport.ini (`e239641`)
+
+The user sent their real `bbport.ini` (74 lines, `settings_rev=3`, CRLF) to show the file exists.
+Reading it showed diag-4 as first written **would not have worked**: `ensure_default_ini` only
+writes the defaults for a *missing* file, so a `dzn_debug=` line would never appear in a file that
+already exists - the same class of mistake as the `graphics-debug.txt` instruction, valid for a
+fresh install and unusable on this console. `e239641` fixes it:
+
+- `migrate_ini_defaults` now migrates to **revision 4**: if the file has no `dzn_debug` key, the
+  block is appended and `settings_rev=4` is written. Simulated against the user's exact file: the
+  block lands after `heavy_features_optin=0`, the revision becomes 4, and every existing value is
+  unchanged (`output_res=1280x720`, `skip_intro=1`, `watchdog=1`).
+- Any key written entirely in **CAPITALS** is exported as an environment variable, so
+  `DZN_DEBUG=d3d12` or `VK_LOADER_DRIVERS_DISABLE=*dzn*` can be pasted as-is next to the friendly
+  `dzn_debug=` spelling. Checked: `DZN_DEBUG`, `VK_LOADER_DRIVERS_DISABLE`,
+  `BB_MEMORY_SELFTEST` export; `dzn_debug`, `output_res`, `settings_rev`, `watchdog`,
+  `skip_intro` do not.
+
+So on the first launch of this build, `bbport.ini` grows the block by itself - the player can also
+open the file and see it, but does not have to.
+
 ## The run to ask for (no file surgery needed)
 
 Two launches, each one line different in `bbport.ini`:

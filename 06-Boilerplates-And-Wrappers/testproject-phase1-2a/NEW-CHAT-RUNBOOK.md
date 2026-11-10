@@ -44,16 +44,16 @@ Host tests: **5/5 PASS** (`dense_arena`, `arena_admission_policy`, `recovery_lad
 
 ## Steps (everything on YOUR branch)
 
-1. Get the kit: Google Drive file **`1cMCVsKCXJ7hKisa08vg0vCtz7oPuHrA5`**
-   (`bb-port-diag4-kit.zip`; google_drive `download_file` streams it to the workspace) →
-   unzip → `bb-port-diag4.bundle` + `release-notes-diag4.md` + `graphics-debug.txt`.
+1. Get the kit: Google Drive file **`1EctnKyklO1tUJ3HCRPiU7QqdtXCIdTFJ`**
+   (`bb-port-diag4b-kit.zip`; google_drive `download_file` streams it to the workspace) →
+   unzip → `bb-port-diag4b.bundle` + `release-notes-diag4.md` + `graphics-debug.txt`.
 2. In your Test-project checkout (your session branch name in the two places marked):
 
    ```bash
    git fetch origin arena/c40c18ec-test-project   # objects + base 489444f (READ-ONLY: never push)
-   git fetch /path/to/bb-port-diag4.bundle \
-       'refs/heads/arena/c40c18ec-test-project:refs/bb/diag4'
-   git checkout -B arena/<your-id>-test-project refs/bb/diag4   # tip = d82bfd9 over 489444f
+   git fetch /path/to/bb-port-diag4b.bundle \
+       'refs/heads/arena/c40c18ec-test-project:refs/bb/diag4b'
+   git checkout -B arena/<your-id>-test-project refs/bb/diag4b   # tip = e239641 over 489444f
    git fetch origin arena/c40c18ec-test-project
    cp /path/from-kit/release-notes-diag4.md .
    git add release-notes-diag4.md
