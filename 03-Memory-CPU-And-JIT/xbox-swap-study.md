@@ -42,6 +42,43 @@ without compression, budgets, or telemetry.
 The port's pager is a generation ahead. xbox-swap wins on exactly one axis: **scope** — it
 swaps *host* allocations, which the port's pager does not touch.
 
+## 3b. Step 1 BUILT (2026-11-10) — o1heap arena behind the staging pool
+
+`youdedend/Test-project` local commit **`d31be49`** on `arena/8ac58bdb-test-project` (stacks on
+`681384b` 2a; ff from `cac48ea`), delivered as `06-Boilerplates-And-Wrappers/testproject-phase1-2a/
+phase1-2a-step1.bundle` + `release-2a-step1.ps1` + `release-notes-step1.md` + `bb-port-phase1-2a-step1-kit.zip`
+(Drive fallback `1K_KlMhzibGEzonHw1HtGN3bmyopfW3yE`). What landed:
+
+- **Vendored** `xbox/graphics/o1heap/{o1heap.h,o1heap.c,LICENSE}` = `pavel-kirienko/o1heap@388a73fd`
+  (MIT). **Material o1heap fact found while integrating:** every allocation rounds up to a
+  **power-of-two span** — `o1heap.c:390` `alloc_size = roundUpToPowerOf2(amount + O1HEAP_ALIGNMENT)`
+  (same at `:555` on realloc) — so a request can consume up to 2x its bytes. Verified by probe:
+  a 5 MiB arena serves 3 MiB but NOT 4 MiB (→8 MiB span). Chunk sizing therefore budgets the
+  span + 50% headroom (`staging_arena.h:91`). All MiB accounting must count chunk bytes, not
+  requested bytes.
+- **`xbox/graphics/staging_arena.h`** (pure header): chunk = one `VideoCore::Buffer`, o1heap over
+  it; `Request` (`:79`) first-fit over chunks then grow ≥32 MiB; `FreeDeferredByOffset` (`:121`)
+  = the deferred-release rule; `Collect` (`:135`) frees a record only when `is_free(tick)` (the
+  `scheduler.IsFree` rule, kept from the legacy path) and releases empty chunks past 120 idle
+  frames. Failure to serve = caller falls through to the legacy path — the arena may
+  under-deliver, never fail what the old code could serve.
+- **Pool integration** (`gpu/shadps4/video_core/renderer_vulkan/vk_staging_buffer_pool.cpp`):
+  arenas for HostUncached + HostCached only (`:82-96`; DeviceLocal cannot host o1heap metadata —
+  VRAM is not CPU-addressable); `RequestLarge` tries the arena (`:170`); arena-aware
+  `FreeDeferred` (`:233`); `Collect` in `TickFrame` (`:271`); `ResidentBytes` (`:312`) and
+  `PublishStats` account arena chunks. `BB_STAGING_ARENA=0` / `staging_arena=0` restores the
+  legacy path exactly (`xbox/platform/main.cpp` flag_to_env + default ini).
+- **Tests**: `xbox/tests/staging_arena_test.cpp` (8 groups — tick safety, held-deferred,
+  cross-size reuse 20→5+15 MiB in one chunk, alignment, growth, chunk release, fallback signal,
+  offset lookup) → `staging_arena: PASS` on the build machine; `xbox.yml` row `staging_arena`
+  compiles the test + `o1heap.c` for the toolchain check.
+
+**Not yet measured** (hardware): whether freed-staging reuse actually moves the 5,055-5,116 MiB
+wall / the fault RVAs — `release-notes-step1.md` defines the T13/T21-style comparison (staging
+MiB, dedicated-vs-arena buffer counts, fault RVAs, T21 burst). Honest bounds: no paging, no
+admission enforcement (2b), no compaction; the power-of-two span rule caps the win and must be
+reported against measured chunk bytes.
+
 ## 4. Verdict & what to steal
 
 **Do not link `fmalloc`** (defects 1–6 make it unsafe in its current form; GPL-3.0 also forces

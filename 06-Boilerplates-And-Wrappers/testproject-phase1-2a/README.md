@@ -1,5 +1,12 @@
 # Test-project Phase 1 / Stage 2a — Pre-allocation recovery ladder (item 2)
 
+> **STEP-1 UPDATE (2026-11-10):** the branch now carries `d31be49` = this 2a commit PLUS the
+> item-2 step-1 o1heap staging arena (xbox-swap study). To publish BOTH in one push use the
+> newer files in this folder: **`phase1-2a-step1.bundle` + `release-2a-step1.ps1`** (one
+> PowerShell paste, same mechanics) and read `release-notes-step1.md` (hardware measurement
+> plan + `staging_arena=0` rollback). `bb-port-phase1-2a-step1-kit.zip` bundles them for a
+> USB stick. The 2a-only files below remain valid if you want the ladder alone.
+
 > **Release status (2026-11-07):** implementation complete, host tests PASS, prepared as local
 > commit `681384b` on `arena/8ac58bdb-test-project` (base `cac48ea`) in the working clone — but
 > the push and the Git Data API route are both refused for this session's GitHub credential
