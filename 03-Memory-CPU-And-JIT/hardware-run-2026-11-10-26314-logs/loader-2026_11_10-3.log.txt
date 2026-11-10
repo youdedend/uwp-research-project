@@ -1,0 +1,265 @@
+Bloodborne Xbox Series X|S UWP loader started 2026-11-10 07_12_15
+Device model: 0x1d27fabb; app memory budget: 5120 MiB; gamepads: 0
+UWP watchdog: on; ladder 400 MiB, pager 250 MiB, degrade 150 MiB, reduce 96 MiB (on), fast tick 600 MiB (on), stuck 3 s degrades / 10 s exits, cooldown 2000 ms
+UWP feature budget: output 1280x720 -> scene target 3.5 MiB; upscaler=off costs 0.0 MiB, frame_gen=off costs 0.0 MiB; features over 50 MiB are turned off
+UWP feature budget: fps_cap=60 (each frame in flight holds a 3.5 MiB scene target plus the presenter's images; a 30 cap halves the frames the GPU may queue)
+UWP swap: no writable, non-removable alternative with space above the reserve; falling back to LocalState
+UWP build: version=1.0.26314.1455 commit=9849cafba2de branch=arena/c40c18ec-test-project
+UWP memory marks: limit=5120 MiB, usage=83 MiB, level=0, pinned=0 MiB, resident=0 MiB
+UWP settings: output_res=1280x720 upscaler=off frame_gen=off preset=default swap_disk_mb=default (2048, capped to the device) swap_reserve_mb=384
+UWP feature cost: output 1280x720 (scene target 3.5 MiB, history pair 7.0 MiB); upscaler=off (+0.0 MiB when on); frame_gen=off (+0.0 MiB per extra frame when on)
+UWP lifecycle: visible=1
+UWP cache launch: Prepared=exists boot-linked.bin=exists; shader_cache=absent (0 files, 0 MiB); user/cache=exists (228 files, 170 MiB); run=warm
+UWP memory plan switches: swap_auto=1 swap_speed_test=1 swap_pool_decommit=1 arena_admission=1 watchdog=1 watchdog_fast=1 watchdog_reduce=1 texture_reclaim_experiment=0 resolution_diagnostics=1 cache_run_diagnostics=1
+UWP texture switches: legacy BB_GC_DROP_OLD=0, BB_GC_DEPTH_RECLAIM=1 (gated by experiment on UWP)
+UWP arena admission: on; 250 MiB reserve and 768 MiB live cap are OBSERVATION ONLY, not enforced
+UWP swap selection: Q: free=27955 MiB path=Q:\Users\UserMgr1\AppData\Local\Packages\BloodborneLauncher_5c4hjcx6a8gg4\LocalState\bloodborne-swap-7380-156155171.bin source=LocalState fallback requested_budget=2048 MiB reserve=384 MiB (actual cap after open)
+UWP flags: swap=1 verify=1 blank=1 compress=1 pin_private=0 timeout_ms=2000 toggles=none pool_mb=192 (default) storage_dialog=1
+UWP swap speed: 64 MiB Q: unbuffered write 724.8 MiB/s (88 ms), read 929.3 MiB/s (69 ms)
+UWP storage: LocalState is on Q: (Q:\Users\UserMgr1\AppData\Local\Packages\BloodborneLauncher_5c4hjcx6a8gg4\LocalState)
+UWP storage: D: total=80.0 GiB free=75.5 GiB writable type=fixed bus=unknown (not eligible)
+UWP storage: E: total=931.5 GiB free=203.7 GiB writable type=fixed bus=unknown (not eligible)
+UWP storage: LocalState\bbport.ini = 1 KiB in 1 file(s)
+UWP storage: LocalState\dlc = 0 KiB in 0 file(s)
+UWP storage: LocalState\dozen-unknown.log = 0 KiB in 1 file(s)
+UWP storage: LocalState\dozen.log = 0 KiB in 0 file(s)
+UWP storage: LocalState\errors-unknown-2.log = 20 KiB in 1 file(s)
+UWP storage: LocalState\errors-unknown.log = 0 KiB in 1 file(s)
+UWP storage: LocalState\errors.log = 0 KiB in 0 file(s)
+UWP storage: LocalState\loader-2026_11_10-2.log = 195 KiB in 1 file(s)
+UWP storage: LocalState\loader-2026_11_10.log = 8 KiB in 1 file(s)
+UWP storage: LocalState\loader.log = 2 KiB in 1 file(s)
+UWP storage: LocalState\memory-selftest.txt = 0 KiB in 1 file(s)
+UWP storage: LocalState\mods = 0 KiB in 0 file(s)
+UWP storage: LocalState\Prepared = 292 MiB in 46 file(s)
+UWP storage: LocalState\temp = 2 KiB in 14 file(s)
+UWP storage: LocalState\user = 183 MiB in 244 file(s)
+UWP storage: LocalState total = 476 MiB in 312 file(s) of 0 KiB on the volume
+UWP storage: no other writable fixed volume confirmed; removable and unknown volumes are excluded from automatic swap
+UWP STORAGE WARNING: 0 KiB free on Q:, below the 1.0 GiB this port wants for the swap for the game's own writes. The chosen swap volume is reported separately.
+Player dialog: Low storage: the volume holding the game's data has less than 1.0 GiB free. Saves and caches also need that space even if swap is on another volume. Free space on that volume (old logs, captures, other games) before playing.
+Player choice: 0
+AppContainer codeGeneration + sysv_abi smoke: PASS (42)
+USB dump found: E:\dumps\Bloodborne
+Picked Bloodborne folder: E:\dumps\Bloodborne (USB drive)
+Prepare: param.sfo E:\dumps\Bloodborne\sce_sys\param.sfo app_ver=01.00 app_type=? title_id=CUSA03173 content_id=EP9000-CUSA03173_00-BLOODBORNE0000EU
+Prepare: param.sfo kind=base (app_type=unknown)
+Prepare: param.sfo E:\dumps\Bloodborne-patch\sce_sys\param.sfo app_ver=01.09 app_type=? title_id=CUSA03173 content_id=EP9000-CUSA03173_00-BLOODBORNE0000EU
+Prepare: param.sfo kind=base (app_type=unknown)
+Prepare: param.sfo E:\dumps\GodOfWar3\sce_sys\param.sfo app_ver=01.01 app_type=? title_id=CUSA01623 content_id=UP9000-CUSA01623_00-0000GODOFWAR3PS4
+Prepare: param.sfo kind=base (app_type=unknown)
+Prepare: ignoring patch candidate E:\dumps\GodOfWar3 (different TITLE_ID (CUSA01623))
+DumpLayout: kind=split; base_ver=01.00; patch_ver=01.09; effective=01.09; base=E:\dumps\Bloodborne; patch=E:\dumps\Bloodborne-patch
+Launcher dump layout:
+Base dump:  E:\dumps\Bloodborne - app_ver=01.00 CUSA03173
+Patch dump: E:\dumps\Bloodborne-patch - app_ver=01.09 CUSA03173 (in use)
+Effective version: 01.09
+Launcher panel: split dump (effective=01.09)
+Player dialog: Bloodborne dump
+
+Base dump:  E:\dumps\Bloodborne - app_ver=01.00 CUSA03173
+Patch dump: E:\dumps\Bloodborne-patch - app_ver=01.09 CUSA03173 (in use)
+Effective version: 01.09
+
+The update is merged over the game dump inside the app's LocalState; your USB folder is never modified.
+
+Intro: skipped (logos and title movie). Change it in the in-game menu.
+Player choice: 0
+Launch target: base=E:\dumps\Bloodborne; patch=E:\dumps\Bloodborne-patch; effective=01.09; patches=required
+Active Bloodborne dump: E:\dumps\Bloodborne (USB drive)
+DLC root configured: Q:\Users\UserMgr1\AppData\Local\Packages\BloodborneLauncher_5c4hjcx6a8gg4\LocalState\dlc
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP run curve: cache=warm t=4s usage=84/5120 MiB presents=0
+UWP memory telemetry: 84/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +84 MiB since the last sample, gpu fence submitted=0 completed=0 age=0 ms)
+UWP memory table: app=84/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=768 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: not available
+  os: hard faults=13946, working set=35 MiB, peak=35 MiB, page file=84 MiB, presents=0
+  accounted: max(guest resident=0, device=0) = 0 MiB; unaccounted=+84 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+UWP file warning: CreateDirectoryFromAppW('Q:') failed (Win32=5, errno=13)
+Prepare: param.sfo E:\dumps\Bloodborne\sce_sys\param.sfo app_ver=01.00 app_type=? title_id=CUSA03173 content_id=EP9000-CUSA03173_00-BLOODBORNE0000EU
+Prepare: param.sfo kind=base (app_type=unknown)
+Prepare: param.sfo E:\dumps\Bloodborne-patch\sce_sys\param.sfo app_ver=01.09 app_type=? title_id=CUSA03173 content_id=EP9000-CUSA03173_00-BLOODBORNE0000EU
+Prepare: param.sfo kind=base (app_type=unknown)
+Overlay: E:\dumps\Bloodborne + E:\dumps\Bloodborne-patch -> Q:\Users\UserMgr1\AppData\Local\Packages\BloodborneLauncher_5c4hjcx6a8gg4\LocalState\Prepared\overlay (436 files from the update, 38 copied, 436 redirected, digest ee93feb5f771)
+Update overlay: 436 paths from E:\dumps\Bloodborne-patch over E:\dumps\Bloodborne
+Prepare: base_app_ver=01.00; patch_app_ver=01.09; effective=01.09; patches=required
+Prepared boot image cached: Q:\Users\UserMgr1\AppData\Local\Packages\BloodborneLauncher_5c4hjcx6a8gg4\LocalState\Prepared (app_ver=01.09)
+Compiled startup patches: FPS=60, scene=1920x1080, UI=1920x1080, writes=198 (4214 bytes)
+UWP memory: reserving guest windows on demand; 16 KiB commit-on-touch pages
+UWP swap: compressed sparse backing ready; 64 MiB mapped-window limit, 389120 page records
+UWP swap: pager active, app budget=5120 MiB, pressure headroom=640 MiB; private pages pageable; disk budget=2048 MiB (ceiling 2048 MiB, reserve 384 MiB for the game's own writes)
+Handing off to Bloodborne sysv_abi loader + shadPS4/Dozen GPU runtime...
+Online: Xbox UWP offline profile (CUSA03173 Bloodborne™ 01.09)
+Settings: Q:\Users\UserMgr1\AppData\Local\Packages\BloodborneLauncher_5c4hjcx6a8gg4\LocalState\bbport.ini
+UWP breadcrumbs (unhandled exception), last 4 of 4 entries:
+  [0 ms] storage warning: LocalState volume is low
+  [4688 ms] memory pressure level -> 0
+  [4688 ms] heartbeat: app=84 MiB level=0 resident=0 MiB
+  [6250 ms] running the guest (boot)
+UWP breadcrumbs (unhandled exception), last 4 of 4 entries:
+  [0 ms] storage warning: LocalState volume is low
+  [4688 ms] memory pressure level -> 0
+  [4688 ms] heartbeat: app=84 MiB level=0 resident=0 MiB
+  [6250 ms] running the guest (boot)
+UWP breadcrumbs (unhandled exception), last 4 of 4 entries:
+  [0 ms] storage warning: LocalState volume is low
+  [4688 ms] memory pressure level -> 0
+  [4688 ms] heartbeat: app=84 MiB level=0 resident=0 MiB
+  [6250 ms] running the guest (boot)
+[uwp-vk] Upgraded UMA VkMemoryHeap[0] size from 1280 MiB -> 5120 MiB (Xbox AppMemoryUsageLimit)
+GPU: Microsoft Direct3D12 (SraKmd_arden) (integrated), 5120 MiB VRAM, driver Dozen 26.2.99 (Mesa 26.3.0-devel (git-a76cd3caa2)), Vulkan 1.2.363
+UWP host push bindings: ordinary descriptor sets, fence-safe command-buffer pools
+CoreWindow presentation bridge: 1280x720, shared image 3904 KiB
+UWP staging arena: HostUncached (uploads) large/deferred path now sub-allocates from o1heap
+UWP staging arena: HostCached (readbacks) large/deferred path now sub-allocates from o1heap
+UWP alloc: 48 MiB Stream (buffer cache), usage 552 -> 601 MiB, 3.3 ms
+UWP alloc: 128 MiB DeviceLocal (buffer cache), usage 611 -> 739 MiB, 7.8 ms
+UWP buffer cache: ordinary buffers, 16 MiB pages, 176 logical DMA views
+GPU: driver.vkcache identity: file vendor=0x1414 device=0xd000 uuid=e59ea486d6196cf07d91d5ba7682efe3 | current vendor=0x1414 device=0xd000 uuid=e59ea486d6196cf07d91d5ba7682efe3
+GPU: loaded driver.vkcache (842 KiB)
+GPU: draw preparation workers: 0 (+1 scanner, 8 hardware threads)
+Object motion: off (enable in menu or BB_OBJECT_MOTION=1)
+UWP resolution: configured scene=1280x720 output=1280x720; scene_res sizes host proxies, output_res sizes presentation surfaces, and native guest render targets remain allocated; BB_RENDER_RES=unset
+UWP resolution: proxy size 1920x1080 -> 1280x720; releasing 0 existing proxy allocations (0 KiB); native guest targets remain allocated
+Scene resolution: raster 1280x720, half-resolution targets 640x360, UI 1920x1080 (live)
+Xbox scene resolution: live 1280x720 ready (HUD 1920x1080)
+UWP presentation: native resolution; FSR1 and RCAS disabled
+Overlay: menu ready (Insert or L3+R3)
+CoreWindow first frame presented
+GPU: WarmUp preloaded 65 / 65 pipelines (VK_KHR_pipeline_binary hits=0, saved=0)
+UWP run curve: cache=warm t=9s usage=1009/5120 MiB presents=0
+UWP memory telemetry: 1009/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +924 MiB since the last sample, gpu fence submitted=3 completed=2 age=0 ms)
+UWP memory table: app=1009/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1009 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=400341, working set=853 MiB, peak=854 MiB, page file=996 MiB, presents=0
+  accounted: max(guest resident=0, device=1009) = 1009 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+UWP run curve: cache=warm t=14s usage=1009/5120 MiB presents=0
+UWP memory telemetry: 1009/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +0 MiB since the last sample, gpu fence submitted=3 completed=2 age=5003 ms)
+UWP memory table: app=1009/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1009 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=400374, working set=853 MiB, peak=854 MiB, page file=995 MiB, presents=0
+  accounted: max(guest resident=0, device=1009) = 1009 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+UWP run curve: cache=warm t=19s usage=1008/5120 MiB presents=0
+UWP memory telemetry: 1008/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +0 MiB since the last sample, gpu fence submitted=3 completed=2 age=10006 ms)
+UWP memory table: app=1008/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1008 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=400406, working set=853 MiB, peak=854 MiB, page file=995 MiB, presents=0
+  accounted: max(guest resident=0, device=1008) = 1008 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+UWP run curve: cache=warm t=24s usage=1084/5120 MiB presents=0
+UWP memory telemetry: 1084/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +76 MiB since the last sample, gpu fence submitted=3 completed=2 age=15009 ms)
+UWP memory table: app=1084/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1084 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=423480, working set=929 MiB, peak=935 MiB, page file=1071 MiB, presents=0
+  accounted: max(guest resident=0, device=1084) = 1084 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+GPU: extracted 8207 compilable CS/PS/VS programs (+2048 linked VS+PS pairs, 5493 boot.bin OrbShdr) from 7/7 shader archives (22517 OrbShdr total, 8851 unique: VS=7721 PS=8028 CS=757 GS/HS/DS/ES/LS=6011)
+GPU: saved driver.vkcache (5403 KiB)
+UWP run curve: cache=warm t=30s usage=1044/5120 MiB presents=0
+UWP memory telemetry: 1044/5120 MiB (level=0, presents=0, guest pinned=0 MiB, -40 MiB since the last sample, gpu fence submitted=3 completed=2 age=20012 ms)
+UWP memory table: app=1044/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1044 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=482815, working set=889 MiB, peak=965 MiB, page file=1031 MiB, presents=0
+  accounted: max(guest resident=0, device=1044) = 1044 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+GPU: saved driver.vkcache (14195 KiB)
+UWP run curve: cache=warm t=35s usage=1054/5120 MiB presents=0
+UWP memory telemetry: 1054/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +10 MiB since the last sample, gpu fence submitted=3 completed=2 age=25015 ms)
+UWP memory table: app=1054/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1054 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=513470, working set=899 MiB, peak=965 MiB, page file=1041 MiB, presents=0
+  accounted: max(guest resident=0, device=1054) = 1054 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+GPU: saved driver.vkcache (23429 KiB)
+UWP run curve: cache=warm t=40s usage=1064/5120 MiB presents=0
+UWP memory telemetry: 1064/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +10 MiB since the last sample, gpu fence submitted=3 completed=2 age=30018 ms)
+UWP memory table: app=1064/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1064 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=550223, working set=910 MiB, peak=965 MiB, page file=1051 MiB, presents=0
+  accounted: max(guest resident=0, device=1064) = 1064 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused
+GPU: saved driver.vkcache (31339 KiB)
+UWP run curve: cache=warm t=45s usage=1065/5120 MiB presents=0
+UWP memory telemetry: 1065/5120 MiB (level=0, presents=0, guest pinned=0 MiB, +0 MiB since the last sample, gpu fence submitted=3 completed=2 age=35748 ms)
+UWP memory table: app=1064/5120 MiB guest resident=0 MiB (pinned 0 MiB)
+  swap: used=0 budget=2048 payload=0 MiB, pages=0 (blank 0), blank=0 raw=0 compressed=0 MiB
+  resident: private=0 MiB (pageable 0, not pageable 0), section=0, views=0, disk-backed=0 MiB
+  swap keeps out of RAM: 0 MiB of guest pages (blank 0 + compression) in 0 MiB of file
+  swap io: out=0 in=0 pages, copy-in failures=0, write failures=0, at-budget=0 MiB, write-failed=0 MiB
+  gpu: device=1064 MiB (available=1), textures=0 MiB in 0 images
+  arena: live=0 retired=0 reserve-used=0 MiB
+  fences: submitted=3 completed=2 outstanding=1
+  os: hard faults=584206, working set=909 MiB, peak=968 MiB, page file=1051 MiB, presents=0
+  accounted: max(guest resident=0, device=1064) = 1064 MiB; unaccounted=+0 MiB (app - the larger view; 0 MiB of guest memory is outside the driver's total)
+  pager at-budget: 0 MiB stayed resident (both tiers full); zero pages paged out with no record=0 MiB; pool: 0 pages = 0 MiB of guest memory in 0 MiB committed (capacity 0, peak 0), saved 0 MiB, 0 page-ins, 0 refused

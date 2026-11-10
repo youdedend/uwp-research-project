@@ -1,0 +1,60 @@
+# Bloodborne Xbox Series X|S UWP settings (in-game overlay: L3 + R3)
+# skip_intro=1 skips the intro logos and movie (also in the in-game menu); absent = asked
+# once on the first start.
+upscaler=off
+scene_res=1280x720
+output_res=1280x720
+vsync=1
+fps_cap=60
+gamma=1.00
+fps_patch=60
+show_fps=1
+mute_unfocused=0
+button_prompts=xbox
+effect_chromatic_aberration=0
+effect_dof=1
+effect_motion_blur=0
+effect_ssao=1
+effect_game_aa=1
+effect_dynamic_shadows=1
+effect_ssr=0
+model_lod=0
+
+# BUILD 3: the recovery watchdog (see docs/memory-plan-build-3.md). It checks once a second
+# and acts when the app is within these distances of its memory limit: release cheap memory,
+# then force a pager sweep, then drop optional features and the resolution, and finally exit
+# cleanly (with the saves flushed) instead of being killed. watchdog=0 disables every step.
+watchdog=1
+watchdog_ladder_mb=400
+watchdog_pager_mb=250
+watchdog_degrade_mb=150
+watchdog_stuck_s=3
+watchdog_exit_s=10
+watchdog_cooldown_ms=2000
+# heavy_features_optin=1 keeps an optional feature whose host targets cost more than 50 MiB.
+heavy_features_optin=0
+settings_rev=3
+
+# Per-feature memory experiments (0 disables; swap_file=auto selects a fixed drive).
+swap_auto=1
+swap_file=auto
+swap_speed_test=1
+swap_pool_decommit=1
+arena_admission=1
+arena_admission_recover=1
+arena_live_cap_mb=768
+watchdog_fast=1
+watchdog_reduce=1
+watchdog_reduce_mb=96
+watchdog_fast_tick_mb=600
+texture_reclaim_experiment=0
+resolution_diagnostics=1
+cache_run_diagnostics=1
+# staging_arena=0 restores the legacy per-request staging buffers (item 2 step 1).
+staging_arena=1
+skip_intro=1
+
+[dump]
+# Empty patch_path auto-detects the update folder next to the game folder.
+patch_path=
+use_patch=1

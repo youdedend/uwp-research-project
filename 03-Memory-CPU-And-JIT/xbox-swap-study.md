@@ -109,6 +109,17 @@ messages carry `[release]` so the publish gate (xbox.yml:278) held at the tip:
 Hardware validation remains outstanding (plan in `release-notes-step1.md`); the pre-release ZIP
 is at https://github.com/youdedend/Test-project/releases/tag/xbox-alpha-1.0.26314.1455.
 
+### Hardware outcome — first logs (2026-11-10, Series S): see `hardware-run-2026-11-10-26314.md`
+
+Short version: the gameplay run played 1,225 presents on `cache=cold` with **zero historical
+fault RVAs, zero DEVICE_LOST, `corrupt=0`** — the watchdog + recovery ladder held the burst at
+4,822/5,120 MiB in production for the first time (reclaim 78 MiB + pager 32 MiB + degrade). But
+the 800–1,300-present stall class is still present as a **GPU fence wedge** (41 s frozen), a
+warm-boot `GameSerial` assertion (`elf_info.h:107`) stops runs 3–4 before any present, and the
+staging-chunk telemetry needed to actually measure the o1heap arena **is not logged** (plan
+questions 1–2 = unknown). Full evidence, pins, and next steps in the linked doc + its
+`hardware-run-2026-11-10-26314-logs/` folder.
+
 ## 4. Verdict & what to steal
 
 **Do not link `fmalloc`** (defects 1–6 make it unsafe in its current form; GPL-3.0 also forces

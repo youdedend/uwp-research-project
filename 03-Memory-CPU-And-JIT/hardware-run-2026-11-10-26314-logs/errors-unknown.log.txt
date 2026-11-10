@@ -1,0 +1,2 @@
+GPU [Debug] <Critical> elf_info.h:107 GameSerial: Assertion Failed!
+STOP: GPU library assertion failed (see GPU log above)

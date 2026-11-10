@@ -1,5 +1,11 @@
 # Phase 1/2a + item-2 step-1 — what to test on hardware
 
+> **RESULTS (2026-11-10, first logs):** see
+> [`hardware-run-2026-11-10-26314.md`](../03-Memory-CPU-And-JIT/hardware-run-2026-11-10-26314.md)
+> — no historical fault RVAs, no DEVICE_LOST, `corrupt=0`, watchdog held a +1.8 GiB burst at
+> 4,822/5,120; open issues = GPU fence wedge at 1,225 presents, warm-boot `GameSerial` stop,
+> staging telemetry not logged (plan items 1–2 unmeasurable until fixed).
+
 Commit being pushed: `d31be49` (contains `681384b` 2a recovery ladder + the o1heap staging
 arena). Same route as the plan: fixed regression route (character creation → Yharnam →
 Cleric Beast area → Hunter's Dream → 3 memory transitions → 20-minute soak), one variable
