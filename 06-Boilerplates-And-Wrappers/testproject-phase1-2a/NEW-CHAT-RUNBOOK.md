@@ -1,7 +1,7 @@
-# NEW-CHAT RUNBOOK v5 — publish **diag-3** (reclaim fix + diagnostics) via YOUR OWN session branch
+# NEW-CHAT RUNBOOK v6 — publish **diag-4** via YOUR OWN session branch
 
 **For: any Arena agent the user sends to publish on `youdedend/Test-project`. Written 2026-11-10 by
-the research session (read-only on Test-project). v5 supersedes v4 (diag-2 alone; published as `xbox-alpha-1.0.26314.1946`), which superseded v3 (diag-1, `xbox-alpha-1.0.26314.1903`); v3 superseded v2 (which published step 1 as
+the research session (read-only on Test-project). v6 supersedes v5 (diag-3, published as `xbox-alpha-1.0.26314.2016`) and v4 (diag-2 alone, `xbox-alpha-1.0.26314.1946`), which superseded v3 (diag-1, `xbox-alpha-1.0.26314.1903`); v3 superseded v2 (which published step 1 as
 `xbox-alpha-1.0.26314.1455`). The change: the prepared tip is now `e2de023` (diag-3, which contains diag-2 `8cb181c`) on top of
 `f531b31`. Your session branch may have ANY
 `arena/<id>-test-project` name — the publish trick is unchanged.**
@@ -44,19 +44,20 @@ Host tests: **5/5 PASS** (`dense_arena`, `arena_admission_policy`, `recovery_lad
 
 ## Steps (everything on YOUR branch)
 
-1. Get the kit: Google Drive file **`1abZb-CmUassUarMFc9frGL8TVYTa4tGK`**
-   (`bb-port-diag3-kit.zip`; google_drive `download_file` streams it to the workspace) →
-   unzip → `bb-port-diag3.bundle` + `release-notes-diag3.md`.
+1. Get the kit: Google Drive file **`1cMCVsKCXJ7hKisa08vg0vCtz7oPuHrA5`**
+   (`bb-port-diag4-kit.zip`; google_drive `download_file` streams it to the workspace) →
+   unzip → `bb-port-diag4.bundle` + `release-notes-diag4.md` + `graphics-debug.txt`.
 2. In your Test-project checkout (your session branch name in the two places marked):
 
    ```bash
-   git fetch origin arena/c40c18ec-test-project   # objects + base f531b31 (READ-ONLY: never push)
-   git fetch /path/to/bb-port-diag3.bundle \
-       'refs/heads/arena/c40c18ec-test-project:refs/bb/diag3'
-   git checkout -B arena/<your-id>-test-project refs/bb/diag3   # tip = e2de023 over f531b31
-   cp /path/from-kit/release-notes-diag3.md .
-   git add release-notes-diag3.md
-   git commit -m '[release] diag-3: name the crashing module and the hanging draw (release notes)'
+   git fetch origin arena/c40c18ec-test-project   # objects + base 489444f (READ-ONLY: never push)
+   git fetch /path/to/bb-port-diag4.bundle \
+       'refs/heads/arena/c40c18ec-test-project:refs/bb/diag4'
+   git checkout -B arena/<your-id>-test-project refs/bb/diag4   # tip = d82bfd9 over 489444f
+   git fetch origin arena/c40c18ec-test-project
+   cp /path/from-kit/release-notes-diag4.md .
+   git add release-notes-diag4.md
+   git commit -m '[release] diag-4: translator switches reachable from bbport.ini (release notes)'
    git push origin arena/<your-id>-test-project   # YOUR session branch
    ```
 
