@@ -126,3 +126,17 @@ The watchdog again **did not take its 10 s exit** even though presents sat froze
    is a policy change we can make safely without touching rendering.
 3. **Log the watchdog's exit gate.** Two runs in a row have now shown the 10 s exit not firing. One
    line saying which condition failed removes a permanent blind spot.
+
+## 7. The user's answer closes one thread: the picture is correct
+
+Asked directly whether the image looked right at ~25 fps, the user answered **"all thing correct"**.
+That is the answer the 24,409 debug-layer messages were owed, and it settles their status:
+
+- The buffer-state defect (we emit one global `MemoryBarrier2` and never a `VkBufferMemoryBarrier2`,
+  so dzn transitions every buffer itself on first use) **does not corrupt what is drawn.** Two hot
+  vertex buffers, thousands of transitions per second, and the image is right.
+- Therefore it is **hygiene, not a bug to chase**: worth fixing for the log noise and for the driver's
+  own state machine, worth *not* spending a build on while there is a 10 s stall and a fault.
+- It also means the 6 fps → 25 fps improvement was real frame rate on a correctly rendered scene, not
+  a game limping along with broken output. The cheapest lever we have found so far was a settings
+  edit, and it produced the best-looking, fastest run in the program's history.
