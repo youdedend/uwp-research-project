@@ -48,11 +48,13 @@ UNHANDLED FAULT CONTEXT: addr is in a private allocation, protect=0x0 state=0x20
   use-after-free (which would read `MEM_FREE`, `type=0`) — it is a **read/write to a page inside a
   reservation that was never committed**, i.e. a guest-memory address whose page was not backed at
   that moment.
-- `addr=0x23fb16ed5bc` is in the guest address range (the log's other guest pointers are
-  `0x10…`/`0x1…`; this one is just outside every guest image the emulator maps), and `VirtualQuery`
-  says the page is inside a reservation we own. The faulting thread was **`recording Vulkan
-  command`** (1,057 ms in that op), with `tid 4108` behind it in *'processing a PM4 submission'* for
-  2,731 ms.
+- `addr=0x23FB16ED5BC` is **not** in guest space: the emulator's guest address space is 40 bits
+  (`ADDRESS_SPACE_BITS = 40`, `buffer_cache.h:42`), i.e. up to `0xFFFFFFFFFF`, and this address is
+  1,279 GiB past that — about 2.5 TiB. So it is a full 64-bit address that happens to be reserved in
+  our own process, and the most likely origin is a **guest 32-bit pointer widened wrongly** or a host
+  pointer with garbage in the top bits, not a plain guest read. The faulting thread was **`recording
+  Vulkan command`** (1,057 ms in that op), with `tid 4108` behind it in *'processing a PM4 submission'*
+  for 2,731 ms.
 - Crash history, now readable at a glance:
 
   | build | fault | `addr` |
@@ -81,37 +83,46 @@ is garbage. Either way it is **one dword at a stream end**, it was present in th
 2,577 presents, and it is therefore almost certainly not the crash — it is the tail of a stream that
 was already being abandoned.
 
-## 5. Two stalls, one shape, and it is ours
+## 5. The proxy accumulation: what is true and what I got wrong
 
-Both the 2112 run and this one stall at the same place, and the log names it:
+The stall is preceded by this block, and it looks alarming at first read:
 
 ```
 Camera motion: scene render size 1920x1080
-UWP resolution: native target 1920x1080 allocation=8704 KiB retained; proxy 1280x720 … live proxies=1  total=3904 KiB
-                                                                                          live proxies=2  total=7808 KiB
-                                                                                          …
-                                                                                          live proxies=7  total=32064 KiB
+UWP resolution: native target 1920x1080 allocation=8704 KiB retained; proxy 1280x720 … live proxies=1 … 7
 UWP dense GPU arena: merge #7 … merge #8 …   (arena live 800 MiB, ring 272 MiB in 17 blocks)
 ```
 
-Seven resolution proxies allocate inside the same second, each **retaining** an 8,704 KiB native
-target, while arenas merge and the staging ring grows to 272 MiB. Presents stop at that moment in both
-runs. This is our proxy/presenter path, it is reproducible across builds, and it is a better target
-than any driver theory: it is the last thing that happens before the stall, and it is code we own.
+**Correction, before this propagates:** the `live proxies=1…7` numbers are a *running total for the
+whole run*, not seven allocations in one second. Those lines carry **no timestamp**, so the earlier
+reading ("seven proxies inside the same second") was an inference from line order and is withdrawn.
+The real figures: `SetSize` ran **once** (`1920x1080 -> 1280x720`, releasing 0 existing proxies), and
+the entire run created **7 proxies totalling 58 MiB**. For a 4.5 GiB budget that is not a leak and not
+a plausible cause of a stall. The design is sound: `entries` is keyed by `(image_uid, mip)`, cleared
+wholesale on a size change, and `recent` is only a lookup cache of raw pointers.
+
+So the honest position on the stall is: **the last thing logged before it is a pair of arena merges
+(`merge #7`, `merge #8`, copying 32 MiB each) with `ring=272 MiB in 17 blocks`, and that is where the
+investigation should look — not at the proxies.** Merges are synchronous copies on the recording
+thread (already instrumented as `UWP thread op: … dense-arena merge copy`), and two of them plus a
+272 MiB ring at the exact moment presents stop is a much better fit for "the recording thread is busy
+for 10 s" than 58 MiB of proxies ever was.
 
 The watchdog again **did not take its 10 s exit** even though presents sat frozen for ~30 s
 (`t=74 s → 102 s`), so the exit step remains broken and still costs a full stall window per run.
 
 ## 6. Next
 
-1. **Find the uncommitted guest read.** The fault is a read into a `MEM_RESERVE` page from the
-   recording thread. The guest pager commits pages on touch; a read that reaches a page the pager has
-   reserved but not committed means either a missing commit in the fault path or a speculative reader
-   (`BbToggle::FaultWindow` / the draw-preparation workers) reading outside what it asked for. The
-   address and the toggles to try (`BB_FAULT_WINDOW=0`, and the draw-preparation toggle) are all in
-   the log's reach now.
-2. **Bound the resolution-proxy growth.** Seven retained 8.5 MiB natives plus their proxies inside one
-   second is not a requirement of anything; the presenter should reuse one. This is the single
-   cheapest change that could remove the stall, and it is testable in a host test.
+1. **Trap the bad pointer at its source, not at the fault.** The address is 1,279 GiB outside guest
+   space, so the interesting question is *where it was formed*, not which page it hit. One build with a
+   check in the two paths that widen a guest address into a host pointer (the buffer cache's
+   `ObtainBuffer` range check and the texture/presenter pointer hand-off), printing the guest address,
+   the resulting host address and the caller, would name it in one run. Cheaper than chasing the page.
+2. **Watch the arena merges at the stall.** `merge #7` and `merge #8` are the last lines before
+   presents stop, each a synchronous 32 MiB copy recorded on the same thread that then faults. The
+   instrumented span (`bbgpu_thread_op("dense-arena merge copy")`) already measures it — the next run
+   should report that span in the stall dump (it is collected but the stall block prints thread names,
+   not ops). If the merge copy is where the 10 s goes, the fix is to stop merging at that moment, which
+   is a policy change we can make safely without touching rendering.
 3. **Log the watchdog's exit gate.** Two runs in a row have now shown the 10 s exit not firing. One
    line saying which condition failed removes a permanent blind spot.
